@@ -198,7 +198,7 @@ class WorkoutListItem extends HTMLElement {
         // clicking anywhere outside an open menu closes it.
         document.addEventListener('pointerup', this.onDocPointerUp.bind(this), this.signal);
 
-        this.addEventListener('mouseover', this.onHover.bind(this), this.signal);
+        this.addEventListener('mousemove', this.onHover.bind(this), this.signal);
         this.addEventListener('mouseout', this.onMouseOut.bind(this), this.signal);
         window.addEventListener('resize', this.debounced.onWindowResize.bind(this), this.signal);
 
@@ -351,6 +351,8 @@ class WorkoutListItem extends HTMLElement {
                 distance,
                 intervalRect,
                 contRect: self.viewPort,
+                mouseX: e.clientX,
+                mouseY: e.clientY,
                 dom: self.dom,
             });
         }
@@ -364,6 +366,7 @@ class WorkoutListItem extends HTMLElement {
             width: rect.width,
             height: rect.height,
             left: rect.left,
+            top: rect.top,
             aspectRatio: rect.width / rect.height,
         };
     }

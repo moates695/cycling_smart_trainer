@@ -4107,17 +4107,47 @@ and (min-width: 1900px) {
 }
 .watts-gauge--value {
     position: absolute;
-    left: 16px; bottom: 0;
-    transform: translateY(50%);
+    left: 22px; bottom: 0;
+    transform: translateY(calc(50% - 2px));
     font: 700 12px/1 var(--watts-ssb);
     color: var(--watts-text);
     white-space: nowrap;
 }
 
 /* --- Workout profile card --- */
-.watts-profile { padding: 14px 8px 12px; margin: 0; flex: 1 1 auto; min-height: 96px; display: flex; flex-direction: column; }
-.watts-profile--head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; flex-wrap: wrap; flex: 0 0 auto; }
-.watts-legend { display: flex; align-items: center; gap: 14px; }
+.watts-profile { padding: 14px 4px 12px; margin: 0; flex: 1 1 auto; min-height: 96px; display: flex; flex-direction: column; }
+.watts-profile--head { position: relative; display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 10px; flex: 0 0 auto; }
+.watts-legend { display: flex; align-items: center; gap: 14px; position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+/* Centred zoom / navigation controls above the plot. */
+.watts-zoom {
+    display: flex; align-items: center; gap: 2px;
+    background: #171a21;
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 9px;
+    padding: 3px;
+}
+.watts-zoom--btn {
+    height: 24px; min-width: 28px;
+    display: grid; place-items: center;
+    padding: 0;
+    border-radius: 6px;
+    color: var(--watts-text-2, #c4cbd6);
+    font: 700 17px/1 var(--watts-ssb);
+    cursor: pointer;
+    user-select: none;
+    transition: background .12s ease;
+}
+.watts-zoom--btn:hover { background: rgba(255,255,255,.06); }
+.watts-zoom--txt { padding: 0 11px; color: var(--watts-text-mut, #8b93a3); font: 600 11px/1 var(--watts-ssb); letter-spacing: .06em; }
+.watts-zoom--now { padding: 0 11px; gap: 5px; color: var(--watts-text-mut, #8b93a3); font: 700 11px/1 var(--watts-ssb); letter-spacing: .06em; }
+/* Highlighted only while actively following the current position. */
+.watts-zoom--now.is-active { background: rgba(200,246,81,.12); color: var(--watts-accent, #c8f651); }
+.watts-zoom--now.is-active:hover { background: rgba(200,246,81,.20); }
+/* Dimmed and inert when zoomed all the way out (nothing to follow). */
+.watts-zoom--now.is-disabled { opacity: .4; cursor: default; }
+.watts-zoom--now.is-disabled:hover { background: transparent; }
+/* When zoomed in, the plot becomes a horizontal scroll viewport. */
+#graph-workout.watts-profile--plot.is-zoomed { overflow-x: auto; overflow-y: hidden; }
 .watts-legend--item {
     display: flex; align-items: center; gap: 6px;
     font: 600 11px/1 var(--watts-ssb);
@@ -4129,10 +4159,10 @@ and (min-width: 1900px) {
 .watts-legend--hr  { background: #ff5470; height: 2px; }
 .watts-legend--cad { background: #38bdf8; height: 2px; }
 .watts-profile--body { display: flex; align-items: stretch; flex: 1 1 auto; min-height: 0; }
-.watts-profile--axis { position: relative; width: 60px; flex: 0 0 auto; height: auto; }
+.watts-profile--axis { position: relative; width: 44px; flex: 0 0 auto; height: auto; }
 .watts-profile--axis span {
     position: absolute;
-    right: 8px;
+    right: 4px;
     font: 700 11px/1 var(--watts-ssb);
     color: var(--watts-text-2);
 }
@@ -4154,10 +4184,10 @@ and (min-width: 1900px) {
 .watts-profile--axis-pow span i:empty::after,
 .watts-profile--axis-pow span i[data-empty]::after { content: ""; }
 /* Right-hand axes: HR (bpm) and cadence (rpm) reference scales. */
-.watts-profile--axis-r { width: 44px; border-left: 1px solid rgba(255,255,255,.12); }
+.watts-profile--axis-r { width: 36px; border-left: 1px solid rgba(255,255,255,.12); }
 .watts-profile--axis-r span {
     right: auto;
-    left: 8px;
+    left: 6px;
     font: 700 11px/1 var(--watts-ssb);
     font-variant-numeric: tabular-nums;
 }
@@ -4165,8 +4195,8 @@ and (min-width: 1900px) {
 .watts-profile--axis-cad span { color: #38bdf8; }
 .watts-axis-unit {
     position: absolute;
-    left: 8px;
-    bottom: -16px;
+    left: 6px;
+    bottom: -10px;
     font: 600 9px/1 var(--watts-ssb);
     font-style: normal;
     letter-spacing: .06em;

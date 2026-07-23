@@ -27,6 +27,7 @@ class Watch {
 
         this.intervals         = [];
         this.workoutType       = "workout";
+        this.lock              = false;
         this.autoStartCounter  = 3;
         this.autoPauseCounter  = 0;
         this.hasBeenAutoPaused = false;
@@ -44,6 +45,7 @@ class Watch {
         xf.sub('db:intervalDuration', time => { self.lapDuration   = time; });
         xf.sub('db:stepDuration',     time => { self.stepDuration  = time; });
         xf.sub('db:intervalIndex',   index => { self.intervalIndex = index; });
+        xf.sub('db:lock',             lock => { self.lock          = lock; });
         xf.sub('db:stepIndex',       index => { self.stepIndex     = index; });
         xf.sub('db:watchStatus',     state => { self.state         = state; });
         xf.sub('db:workoutStatus',   state => {
@@ -348,6 +350,9 @@ class Watch {
     back() {
         const self = this;
 
+        // Prev/next segment navigation is disabled while the workout is locked.
+        if(self.lock) return;
+
         if(self.isWorkoutStarted()) {
             const i = self.intervalIndex;
 
@@ -370,6 +375,9 @@ class Watch {
     }
     forward() {
         const self = this;
+
+        // Prev/next segment navigation is disabled while the workout is locked.
+        if(self.lock) return;
 
         if(self.isWorkoutStarted()) {
             let i             = self.intervalIndex;

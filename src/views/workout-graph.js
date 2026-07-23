@@ -16,8 +16,12 @@ function powerToHeight(power, powerMax, viewPort) {
 }
 
 function intervalToWidth(intervalDuration, totalDuration, totalWidth) {
+    // Cap at the total plot width (in px) — a single interval can be at most the
+    // whole plot. (The cap used to be totalDuration, a seconds value; harmless at
+    // 1× where widths stay well under it, but when zoomed the plot grows past
+    // that value and long intervals stopped widening even as zoom kept rising.)
     return clamp(1,
-                 totalDuration,
+                 totalWidth,
                  translate(intervalDuration, 0, totalDuration, 0, totalWidth)
                 );
 }
@@ -107,25 +111,35 @@ function renderInfo(args = {}) {
     const distance = exists(args.distance) ? `${args.distance}m `: '';
     const dom      = args.dom;
 
-    const intervalLeft = args.intervalRect.left;
-    const contLeft     = args.contRect.left;
-    const contWidth    = args.contRect.width;
-    const left         = intervalLeft - contLeft;
-    const bottom       = args.intervalRect.height;
+    const contLeft   = args.contRect.left;
+    const contTop    = args.contRect.top;
+    const contWidth  = args.contRect.width;
+    const contHeight = args.contRect.height;
+
+    // Cursor position relative to the graph container.
+    const cursorX = exists(args.mouseX) ? args.mouseX - contLeft : 0;
+    const cursorY = exists(args.mouseY) ? args.mouseY - contTop  : 0;
 
     dom.info.style.display = 'block';
+    dom.info.style.bottom  = 'auto';
     dom.info.innerHTML = `<div>${power}</div><div>${cadence}</div><div>${slope}</div><div class="graph--info--time">${duration}</div>`;
 
     const width  = dom.info.getBoundingClientRect().width;
     const height = dom.info.getBoundingClientRect().height;
-    const minHeight = (bottom + height + (40)); // fix 40
-    dom.info.style.left = `min(${contWidth}px - ${width}px, ${left}px)`;
 
-    if(window.innerHeight > minHeight) {
-        dom.info.style.bottom = bottom;
-    } else {
-        dom.info.style.bottom = bottom - (minHeight - window.innerHeight);
-    }
+    // Offset the popup from the cursor, then clamp it inside the container.
+    const offset = 14;
+    let left = cursorX + offset;
+    let top  = cursorY + offset;
+
+    if(left + width > contWidth)  left = cursorX - offset - width;  // flip to left of cursor
+    if(top + height > contHeight) top  = cursorY - offset - height; // flip above cursor
+
+    left = clamp(0, Math.max(0, contWidth - width), left);
+    top  = clamp(0, Math.max(0, contHeight - height), top);
+
+    dom.info.style.left = `${left}px`;
+    dom.info.style.top  = `${top}px`;
 }
 
 class WorkoutGraph extends HTMLElement {
@@ -137,6 +151,10 @@ class WorkoutGraph extends HTMLElement {
         this.index = 0;
         this.minHeight = 30;
         this.type = 'workout';
+        this.zoom = 1;
+        this.zoomMin = 1;
+        this.zoomMax = 6;
+        this.tracking = false; // follow-current mode; only meaningful when zoomed
     }
     connectedCallback() {
         const self = this;
@@ -163,7 +181,7 @@ class WorkoutGraph extends HTMLElement {
         xf.sub('db:workoutStatus', this.onWorkoutStatus.bind(this), this.signal);
         xf.sub('db:lock', this.onLock.bind(this), this.signal);
 
-        this.addEventListener('mouseover', this.onHover.bind(this), this.signal);
+        this.addEventListener('mousemove', this.onHover.bind(this), this.signal);
         this.addEventListener('mouseout', this.onMouseOut.bind(this), this.signal);
 
         // Scrub: drag the progress handle to seek (only when unlocked).
@@ -174,6 +192,75 @@ class WorkoutGraph extends HTMLElement {
         this.addEventListener('pointerdown', this.onScrubStart.bind(this), this.signal);
         // window.addEventListener('resize', this.debounced.onWindowResize.bind(this), this.signal);
         window.addEventListener('resize', this.onWindowResize.bind(this), this.signal);
+
+        this.bindZoomControls();
+    }
+    // The zoom / navigation buttons live in the profile head (outside this
+    // element), so wire them up by id here and tear down via the same signal.
+    bindZoomControls() {
+        const on = (id, handler) => {
+            const el = document.querySelector(id);
+            if(exists(el)) el.addEventListener('click', handler, this.signal);
+        };
+        on('#profile-zoom-in',  () => this.setZoom(this.zoom + 0.5));
+        on('#profile-zoom-out', () => this.setZoom(this.zoom - 0.5));
+        on('#profile-zoom-fit', () => this.zoomFit());
+        on('#profile-zoom-now', () => this.trackCurrent());
+        // A manual scroll drops out of follow-current mode.
+        this.$graphCont.addEventListener('scroll', this.onPlotScroll.bind(this), this.signal);
+        this.updateNowButton();
+    }
+    setZoom(zoom) {
+        const clamped = clamp(this.zoomMin, this.zoomMax, toFixed(zoom, 2));
+        if(equals(clamped, this.zoom)) return;
+        const wasTracking = this.tracking;
+        this.zoom = clamped;
+        if(this.zoom <= 1) this.tracking = false; // nothing to follow when it all fits
+        this.applyZoom();
+        if(this.zoom > 1 && wasTracking) this.scrollToCurrent();
+        else if(this.zoom <= 1) this.$graphCont.scrollLeft = 0;
+        this.updateNowButton();
+    }
+    zoomFit() {
+        this.tracking = false;
+        this.setZoom(this.zoomMin);
+        this.$graphCont.scrollLeft = 0;
+        this.updateNowButton();
+    }
+    // Enter follow-current mode (only allowed when zoomed in) and centre on now.
+    trackCurrent() {
+        if(this.zoom <= 1) return;
+        this.tracking = true;
+        this.scrollToCurrent();
+        this.updateNowButton();
+    }
+    onPlotScroll() {
+        // Ignore the scroll we triggered ourselves; a user scroll ends tracking.
+        if(this._programmaticScroll) { this._programmaticScroll = false; return; }
+        if(this.tracking) {
+            this.tracking = false;
+            this.updateNowButton();
+        }
+    }
+    // Scroll the plot so the current-position line sits in the middle of the
+    // viewport (no-op when not zoomed in — the whole workout is already shown).
+    scrollToCurrent() {
+        const cont = this.$graphCont;
+        if(!exists(cont) || this.zoom <= 1) return;
+        const current = parseFloat(this.dom?.progress?.style.width) || 0;
+        const target  = clamp(0, cont.scrollWidth, current - (cont.clientWidth / 2));
+        if(!equals(Math.round(target), Math.round(cont.scrollLeft))) {
+            this._programmaticScroll = true;
+            cont.scrollLeft = target;
+        }
+    }
+    // NOW is highlighted only while actively following, and dimmed when zoomed
+    // all the way out (where following is not available).
+    updateNowButton() {
+        const btn = document.querySelector('#profile-zoom-now');
+        if(!exists(btn)) return;
+        btn.classList.toggle('is-active', this.tracking && this.zoom > 1);
+        btn.classList.toggle('is-disabled', this.zoom <= 1);
     }
     disconnectedCallback() {
         this.abortController.abort();
@@ -181,12 +268,17 @@ class WorkoutGraph extends HTMLElement {
     getViewPort() {
         // const rect = this.getBoundingClientRect();
         const rect = this.$graphCont.getBoundingClientRect();
+        // The plot renders `zoom`× the visible container width; the surplus
+        // scrolls horizontally inside #graph-workout (see is-zoomed).
+        const width = rect.width * this.zoom;
 
         return {
-            width: rect.width,
+            width,
+            baseWidth: rect.width,
             height: rect.height,
             left: rect.left,
-            aspectRatio: rect.width / rect.height,
+            top: rect.top,
+            aspectRatio: width / rect.height,
         };
     }
     onFTP(value) {
@@ -224,7 +316,9 @@ class WorkoutGraph extends HTMLElement {
                 duration,
                 distance,
                 intervalRect,
-                contRect: self.viewPort,
+                contRect: self.getBoundingClientRect(),
+                mouseX: e.clientX,
+                mouseY: e.clientY,
                 dom: self.dom,
             });
         }
@@ -298,6 +392,9 @@ class WorkoutGraph extends HTMLElement {
         $dom.active.style.height = `${$parent.getBoundingClientRect().height}px`;
 
         $dom.progress.style.width = `${left + (rect.width * lapPercentageComplete)}px`;
+
+        // Follow the current position while tracking is on.
+        if(this.tracking) this.scrollToCurrent();
     }
     onLock(lock) {
         this.lock = lock;
@@ -396,6 +493,13 @@ class WorkoutGraph extends HTMLElement {
     render() {
         const self = this;
         const progress = `<div id="progress" class="progress"><div id="progress-handle" class="scrub-handle"></div></div><div id="progress-active"></div>`;
+
+        // Grow this element (the graph content) beyond the visible plot when
+        // zoomed so the overflow scrolls; reset to fill the plot at zoom 1.
+        const zoomed = this.zoom > 1;
+        this.$graphCont.classList.toggle('is-zoomed', zoomed);
+        this.style.width = zoomed ? `${this.viewPort.width}px` : '';
+        this.style.right = zoomed ? 'auto' : '';
 
         if(equals(this.type, 'workout')) {
             this.innerHTML = progress +

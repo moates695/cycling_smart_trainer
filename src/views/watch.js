@@ -31,6 +31,7 @@ class Watch extends HTMLElement {
 
         xf.sub(`db:watchStatus`, this.onWatchStatus.bind(this), this.signal);
         xf.sub(`db:workoutStatus`, this.onWorkoutStatus.bind(this), this.signal);
+        xf.sub(`db:lock`, this.onLock.bind(this), this.signal);
     }
     disconnectedCallback() {
         this.abortController.abort();
@@ -53,6 +54,12 @@ class Watch extends HTMLElement {
     onWorkoutStatus(status) {
         if(status === 'started') { this.renderWorkoutStarted(this.dom); }
         if(status === 'done')    {  }
+    }
+    // Prev/next segment navigation is blocked while locked (the back()/forward()
+    // handlers in watch.js early-return); grey the buttons to match.
+    onLock(lock) {
+        this.dom.back.classList.toggle('is-disabled', lock);
+        this.dom.forward.classList.toggle('is-disabled', lock);
     }
     // NOTE: reveal buttons with 'grid' (not 'inline-block'). Two legacy rules
     // matter: `.watts-tbtn` is `display:grid; place-items:center` (centres the
