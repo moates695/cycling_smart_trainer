@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#0e1015;color:#eef1f6;font-family:'Barlow',system-ui,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+a{color:#c8f651;text-decoration:none}a:hover{color:#dcff7a}
+input,select,button{font-family:inherit}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#2b303b;border-radius:6px}::-webkit-scrollbar-track{background:transparent}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes rattle{0%,100%{transform:translateX(0) rotate(0)}15%{transform:translateX(-3px) rotate(-7deg)}30%{transform:translateX(3px) rotate(7deg)}45%{transform:translateX(-3px) rotate(-6deg)}60%{transform:translateX(2px) rotate(5deg)}75%{transform:translateX(-2px) rotate(-3deg)}}
+</style>
+</helmet>
+<div style="display:flex;flex-direction:column;height:100vh;min-height:640px;background:#0e1015;">
+  <main style="flex:1;overflow-y:auto;overflow-x:hidden;">
+
+    <!-- ===================== HOME ===================== -->
+    <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:1360px;margin:0 auto;padding:0 32px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 0 18px;border-bottom:1px solid rgba(255,255,255,.06);">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <svg viewBox="0 0 24 24" width="20" height="20" style="filter:drop-shadow(0 0 8px rgba(200,246,81,.6));"><path d="M13 2 L4 13 h6 l-1 9 l9-12 h-6 z" fill="#c8f651"></path></svg>
+          <div style="font:700 20px/1 'Barlow Semi Condensed';letter-spacing:.24em;">WATTS</div>
+          <div style="width:1px;height:20px;background:rgba(255,255,255,.12);margin:0 4px;"></div>
+          <div style="display:flex;align-items:baseline;gap:10px;">
+            <span style="font:700 18px/1 'Barlow Semi Condensed';">Dijon</span>
+            <span style="font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.1em;text-transform:uppercase;color:#f97316;">VO2 Max</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:#171a21;border:1px solid rgba(255,255,255,.06);">
+            <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.7);"></span>
+            <span style="font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.08em;color:#c4cbd6;">KICKR CORE</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:#171a21;border:1px solid rgba(255,255,255,.06);">
+            <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.7);"></span>
+            <span style="font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.08em;color:#c4cbd6;">POLAR H10</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:28px;background:#15181f;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:26px 28px;margin:20px 0;">
+        <div style="flex:1;display:flex;flex-direction:column;gap:28px;">
+          <div style="display:flex;align-items:center;gap:32px;">
+            <div>
+              <div style="display:flex;align-items:center;gap:14px;">
+                <span style="font:600 13px/1 'Barlow Semi Condensed';letter-spacing:.16em;text-transform:uppercase;color:#8b93a3;">Power</span>
+                <span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.1em;color:#f97316;padding:4px 10px;border:1px solid rgba(249,115,22,.4);border-radius:999px;background:rgba(249,115,22,.1);white-space:nowrap;">Z5 · VO2</span>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:12px;margin-top:4px;">
+                <span style="font:700 104px/.82 'Barlow Semi Condensed';letter-spacing:-.02em;">248</span>
+                <span style="font:600 24px/1 'Barlow Semi Condensed';color:#8b93a3;">W</span>
+                <span style="font:600 18px/1 'Barlow Semi Condensed';color:#c8f651;">3.31 W/kg</span>
+              </div>
+            </div>
+            <div style="flex:0 0 auto;width:150px;">
+              <div style="font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#8b93a3;">Target</div>
+              <div style="display:flex;align-items:baseline;gap:7px;margin-top:8px;">
+                <span style="font:700 48px/.85 'Barlow Semi Condensed';color:#f97316;">240</span>
+                <span style="font:600 16px/1 'Barlow Semi Condensed';color:#8b93a3;">W</span>
+              </div>
+              <div style="font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.04em;color:#8b93a3;margin-top:7px;">120% FTP · <span style="color:#22c55e;">+8 W</span></div>
+              <div style="position:relative;height:8px;border-radius:5px;background:#22262f;overflow:hidden;margin-top:11px;">
+                <div style="position:absolute;inset:0 26% 0 0;background:linear-gradient(90deg,#f97316,#fbbf24);border-radius:5px;"></div>
+                <div style="position:absolute;top:-3px;bottom:-3px;left:75%;width:3px;background:#eef1f6;border-radius:2px;box-shadow:0 0 6px rgba(0,0,0,.5);"></div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#8b93a3;">Power History</span>
+                <div style="display:flex;background:#171a21;border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:2px;gap:2px;">
+                  <span style="padding:4px 10px;border-radius:6px;color:#8b93a3;font:600 11px/1 'Barlow Semi Condensed';">1m</span>
+                  <span style="padding:4px 10px;border-radius:6px;background:#c8f651;color:#0e1015;font:700 11px/1 'Barlow Semi Condensed';">5m</span>
+                  <span style="padding:4px 10px;border-radius:6px;color:#8b93a3;font:600 11px/1 'Barlow Semi Condensed';">30m</span>
+                </div>
+              </div>
+              <div style="position:relative;height:100px;">
+                <div style="position:absolute;left:0;right:0;top:0;border-top:1px dashed rgba(255,255,255,.06);"></div>
+                <div style="position:absolute;right:0;top:-6px;font:600 9px/1 'Barlow Semi Condensed';color:#5f6775;">170%</div>
+                <div style="position:absolute;left:0;right:0;top:41.2%;border-top:1px dashed rgba(255,255,255,.08);"></div>
+                <div style="position:absolute;right:0;top:calc(41.2% - 6px);font:600 9px/1 'Barlow Semi Condensed';color:#5f6775;">100%</div>
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;">
+                  <defs><linearGradient id="pwrGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#a855f7"></stop>
+                    <stop offset="0.10" stop-color="#a855f7"></stop>
+                    <stop offset="0.21" stop-color="#ef4444"></stop>
+                    <stop offset="0.34" stop-color="#f97316"></stop>
+                    <stop offset="0.43" stop-color="#eab308"></stop>
+                    <stop offset="0.52" stop-color="#22c55e"></stop>
+                    <stop offset="0.62" stop-color="#3d8bfd"></stop>
+                    <stop offset="0.82" stop-color="#3b4250"></stop>
+                    <stop offset="1" stop-color="#3b4250"></stop>
+                  </linearGradient></defs>
+                  <polyline points="{{ powHistPts }}" fill="none" stroke="url(#pwrGrad)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:26px 28px;">
+            <div><div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#7f8798;">Heart Rate</div><div style="font:700 44px/.9 'Barlow Semi Condensed';margin-top:8px;color:#ff5470;">158 <span style="font-size:14px;color:#8b93a3;">bpm</span></div><svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;max-width:160px;height:24px;margin-top:8px;overflow:visible;"><polyline points="{{ hrSpark }}" fill="none" stroke="#ff5470" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline></svg></div>
+            <div><div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#7f8798;">Cadence</div><div style="font:700 44px/.9 'Barlow Semi Condensed';margin-top:8px;">96 <span style="font-size:14px;color:#8b93a3;">rpm</span></div></div>
+            <div><div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#7f8798;">Interval Left</div><div style="font:700 44px/.9 'Barlow Semi Condensed';margin-top:8px;color:#c8f651;">0:30</div></div>
+            <div><div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#7f8798;">Elapsed</div><div style="font:700 44px/.9 'Barlow Semi Condensed';margin-top:8px;">09:30</div></div>
+            <div><div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#7f8798;">Power Lap</div><div style="font:700 44px/.9 'Barlow Semi Condensed';margin-top:8px;color:#ef4444;">244 <span style="font-size:14px;color:#8b93a3;">W</span></div></div>
+            <div><div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#7f8798;">Speed</div><div style="font:700 44px/.9 'Barlow Semi Condensed';margin-top:8px;">39.4 <span style="font-size:14px;color:#8b93a3;">km/h</span></div></div>
+            <div><div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#7f8798;">Distance</div><div style="font:700 44px/.9 'Barlow Semi Condensed';margin-top:8px;">6.2 <span style="font-size:14px;color:#8b93a3;">km</span></div></div>
+            <div><div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#7f8798;">Time Left</div><div style="font:700 44px/.9 'Barlow Semi Condensed';margin-top:8px;">18:30</div></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:9px;width:58px;border-left:1px solid rgba(255,255,255,.06);padding-left:20px;">
+          <span style="font:600 10px/1 'Barlow Semi Condensed';letter-spacing:.1em;color:#5f6775;">170%</span>
+          <div style="position:relative;flex:1;width:12px;border-radius:6px;background:linear-gradient(to top,#3b4250 0%,#3b4250 32.4%,#3d8bfd 32.4%,#3d8bfd 44.1%,#22c55e 44.1%,#22c55e 52.9%,#eab308 52.9%,#eab308 61.8%,#f97316 61.8%,#f97316 70.6%,#ef4444 70.6%,#ef4444 88.2%,#a855f7 88.2%,#a855f7 100%);">
+            <div style="position:absolute;left:-7px;right:-7px;bottom:72.9%;height:3px;background:#eef1f6;border-radius:2px;box-shadow:0 0 6px rgba(0,0,0,.6);"></div>
+            <div style="position:absolute;left:16px;bottom:72.9%;transform:translateY(50%);font:700 12px/1 'Barlow Semi Condensed';color:#eef1f6;white-space:nowrap;">124%</div>
+          </div>
+          <span style="font:600 10px/1 'Barlow Semi Condensed';letter-spacing:.1em;color:#5f6775;">0%</span>
+          <span style="font:600 10px/1 'Barlow Semi Condensed';letter-spacing:.12em;color:#7f8798;">% FTP</span>
+        </div>
+      </div>
+
+      <!-- SHARED WORKOUT GRAPH -->
+      <div style="background:#15181f;border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:20px 24px 16px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:16px;">
+            <span style="font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.16em;text-transform:uppercase;color:#8b93a3;">Workout Profile</span>
+            <div style="display:flex;align-items:center;gap:2px;background:#171a21;border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:3px;">
+              <div onClick="{{ zoomOut }}" title="Zoom out" style="width:28px;height:24px;display:grid;place-items:center;border-radius:6px;color:#c4cbd6;font:700 17px/1 'Barlow Semi Condensed';cursor:pointer;">−</div>
+              <div onClick="{{ zoomIn }}" title="Zoom in" style="width:28px;height:24px;display:grid;place-items:center;border-radius:6px;color:#c4cbd6;font:700 17px/1 'Barlow Semi Condensed';cursor:pointer;">+</div>
+              <div onClick="{{ fitZoom }}" title="Zoom to fit" style="padding:0 11px;height:24px;display:grid;place-items:center;border-radius:6px;color:#8b93a3;font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.06em;cursor:pointer;">FIT</div>
+              <div onClick="{{ toCurrent }}" title="Scroll to current position" style="padding:0 11px;height:24px;display:flex;align-items:center;gap:5px;border-radius:6px;background:rgba(200,246,81,.12);color:#c8f651;font:700 11px/1 'Barlow Semi Condensed';letter-spacing:.06em;cursor:pointer;">⌖ NOW</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="display:flex;align-items:center;gap:6px;"><span style="width:16px;height:3px;border-radius:2px;background:linear-gradient(90deg,#3b4250,#3d8bfd,#22c55e,#eab308,#f97316,#ef4444);"></span><span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.08em;color:#8b93a3;">POWER</span></div>
+            <div style="display:flex;align-items:center;gap:6px;"><span style="width:16px;height:2px;background:#ff5470;border-radius:2px;"></span><span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.08em;color:#8b93a3;">HR</span></div>
+            <div style="display:flex;align-items:center;gap:6px;"><span style="width:16px;height:2px;background:#38bdf8;border-radius:2px;"></span><span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.08em;color:#8b93a3;">CAD</span></div>
+            <span style="font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.08em;color:#7f8798;">FTP 200 W · 28:00</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:stretch;">
+          <div style="position:relative;width:56px;flex:0 0 auto;height:220px;">
+            <div style="position:absolute;right:8px;top:-5px;font:700 11px/1 'Barlow Semi Condensed';color:#c4cbd6;">150%</div>
+            <div style="position:absolute;right:8px;top:calc(33.3% - 6px);font:700 11px/1 'Barlow Semi Condensed';color:#c4cbd6;">100%</div>
+            <div style="position:absolute;right:8px;top:calc(33.3% + 7px);font:600 9px/1 'Barlow Semi Condensed';color:#5f6775;">200W</div>
+            <div style="position:absolute;right:8px;top:calc(66.6% - 6px);font:700 11px/1 'Barlow Semi Condensed';color:#c4cbd6;">50%</div>
+            <div style="position:absolute;right:8px;top:calc(66.6% + 7px);font:600 9px/1 'Barlow Semi Condensed';color:#5f6775;">100W</div>
+            <div style="position:absolute;right:8px;bottom:-2px;font:700 11px/1 'Barlow Semi Condensed';color:#7f8798;">0%</div>
+          </div>
+          <div ref="{{ scrollRef }}" style="flex:1;overflow-x:auto;overflow-y:hidden;">
+            <div style="position:relative;width:{{ plotWidth }};min-width:100%;">
+              <div title="Tap to seek" onClick="{{ guard }}" style="position:relative;height:220px;">
+                <div style="position:absolute;inset:0;border-left:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12);"></div>
+                <div style="position:absolute;left:0;right:0;top:33.3%;border-top:1px dashed rgba(255,255,255,.08);"></div>
+                <div style="position:absolute;left:0;right:0;top:66.6%;border-top:1px dashed rgba(255,255,255,.08);"></div>
+                <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px;padding-left:2px;">
+                  <sc-for list="{{ segs }}" as="seg" hint-placeholder-count="21">
+                    <div style="flex:{{ seg.flex }} 1 0;height:100%;position:relative;display:flex;align-items:flex-end;">
+                      <div style="width:100%;height:{{ seg.hpct }}%;background:{{ seg.color }};border-radius:3px 3px 0 0;opacity:.9;"></div>
+                      <sc-if value="{{ seg.showWatt }}" hint-placeholder-val="{{ false }}">
+                        <span style="position:absolute;left:0;right:0;bottom:calc({{ seg.hpct }}% + 4px);text-align:center;font:700 10px/1 'Barlow Semi Condensed';color:#fff;white-space:nowrap;">{{ seg.watts }}W</span>
+                      </sc-if>
+                      <sc-if value="{{ seg.showDur }}" hint-placeholder-val="{{ false }}">
+                        <span style="position:absolute;left:0;right:0;bottom:4px;text-align:center;font:600 9px/1 'Barlow Semi Condensed';color:rgba(255,255,255,.7);white-space:nowrap;">{{ seg.durLabel }}</span>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;">
+                  <polyline points="{{ cadPts }}" fill="none" stroke="#38bdf8" stroke-width="1.75" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity="0.85"></polyline>
+                  <polyline points="{{ hrPts }}" fill="none" stroke="#ff5470" stroke-width="1.75" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity="0.9"></polyline>
+                  <defs><linearGradient id="pwrGradProf" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#ef4444"></stop><stop offset="0.12" stop-color="#ef4444"></stop>
+                    <stop offset="0.25" stop-color="#f97316"></stop><stop offset="0.35" stop-color="#eab308"></stop>
+                    <stop offset="0.45" stop-color="#22c55e"></stop><stop offset="0.57" stop-color="#3d8bfd"></stop>
+                    <stop offset="0.80" stop-color="#3b4250"></stop><stop offset="1" stop-color="#3b4250"></stop>
+                  </linearGradient></defs>
+                  <polyline points="{{ powProfPts }}" fill="none" stroke="url(#pwrGradProf)" stroke-width="1.75" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
+                </svg>
+                <div style="position:absolute;top:-6px;bottom:0;left:{{ posPct }}%;width:2px;background:#c8f651;box-shadow:0 0 10px rgba(200,246,81,.8);">
+                  <div style="position:absolute;top:-4px;left:-4px;width:10px;height:10px;border-radius:50%;background:#c8f651;"></div>
+                </div>
+              </div>
+              <div style="position:relative;height:16px;margin-top:8px;">
+                <sc-for list="{{ ticks }}" as="t" hint-placeholder-count="6">
+                  <span style="position:absolute;left:{{ t.left }}%;transform:translateX(-50%);font:600 10px/1 'Barlow Semi Condensed';color:#5f6775;">{{ t.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="position:relative;width:54px;flex:0 0 auto;height:220px;margin-left:8px;">
+            <div style="position:absolute;left:2px;top:-5px;font:700 10px/1 'Barlow Semi Condensed';color:#ff5470;">180</div>
+            <div style="position:absolute;left:2px;top:calc(50% - 5px);font:700 10px/1 'Barlow Semi Condensed';color:#ff5470;">135</div>
+            <div style="position:absolute;left:2px;bottom:-5px;font:700 10px/1 'Barlow Semi Condensed';color:#ff5470;">90</div>
+            <div style="position:absolute;left:0;bottom:-20px;font:600 9px/1 'Barlow Semi Condensed';color:#ff5470;">bpm</div>
+            <div style="position:absolute;left:30px;top:-5px;font:700 10px/1 'Barlow Semi Condensed';color:#38bdf8;">120</div>
+            <div style="position:absolute;left:30px;top:calc(50% - 5px);font:700 10px/1 'Barlow Semi Condensed';color:#38bdf8;">80</div>
+            <div style="position:absolute;left:30px;bottom:-5px;font:700 10px/1 'Barlow Semi Condensed';color:#38bdf8;">40</div>
+            <div style="position:absolute;left:28px;bottom:-20px;font:600 9px/1 'Barlow Semi Condensed';color:#38bdf8;">rpm</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTROL BAR -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:18px;padding:0 0 28px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div title="Previous segment" onClick="{{ guard }}" style="width:44px;height:44px;border-radius:12px;background:#171a21;border:1px solid rgba(255,255,255,.07);display:grid;place-items:center;color:#c4cbd6;font-size:15px;">⏮</div>
+          <div title="Pause" style="width:56px;height:44px;border-radius:12px;background:#c8f651;display:grid;place-items:center;color:#0e1015;font-size:17px;">⏸</div>
+          <div title="Stop" style="width:44px;height:44px;border-radius:12px;background:#171a21;border:1px solid rgba(255,255,255,.07);display:grid;place-items:center;color:#ff5470;font-size:15px;">⏹</div>
+          <div title="Next segment" onClick="{{ guard }}" style="width:44px;height:44px;border-radius:12px;background:#171a21;border:1px solid rgba(255,255,255,.07);display:grid;place-items:center;color:#c4cbd6;font-size:15px;">⏭</div>
+        </div>
+        <div style="width:1px;height:32px;background:rgba(255,255,255,.1);"></div>
+        <div style="font:700 13px/1 'Barlow Semi Condensed';letter-spacing:.1em;color:#c8f651;padding:9px 15px;border-radius:10px;background:rgba(200,246,81,.1);border:1px solid rgba(200,246,81,.3);">ERG</div>
+        <div style="display:flex;align-items:center;background:#171a21;border:1px solid rgba(255,255,255,.07);border-radius:12px;overflow:hidden;">
+          <div style="width:48px;height:44px;display:grid;place-items:center;font:700 22px/1 'Barlow Semi Condensed';color:#c4cbd6;">−</div>
+          <div style="min-width:96px;text-align:center;font:700 20px/1 'Barlow Semi Condensed';padding:0 6px;">240 <span style="font-size:12px;color:#8b93a3;">W</span></div>
+          <div style="width:48px;height:44px;display:grid;place-items:center;font:700 22px/1 'Barlow Semi Condensed';color:#c8f651;">+</div>
+        </div>
+        <div onClick="{{ toggleLock }}" title="Lock / unlock controls" style="{{ lockStyle }}">{{ lockIcon }}</div>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ===================== WORKOUTS ===================== -->
+    <sc-if value="{{ isWorkouts }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:1120px;margin:0 auto;padding:0 32px 40px;">
+      <div style="display:flex;align-items:center;gap:24px;padding:22px 0 20px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:24px;">
+        <div style="font:700 20px/1 'Barlow Semi Condensed';letter-spacing:.24em;">WATTS</div>
+        <div style="display:flex;gap:6px;margin-left:8px;">
+          <div onClick="{{ goMy }}" style="{{ tabMy }}">My Workouts</div>
+          <div onClick="{{ goDefault }}" style="{{ tabDefault }}">Default</div>
+          <div onClick="{{ goCompleted }}" style="{{ tabCompleted }}">Completed</div>
+          <div onClick="{{ goEditor }}" style="{{ tabEditor }}">Editor</div>
+        </div>
+      </div>
+
+      <!-- MY WORKOUTS -->
+      <sc-if value="{{ showMy }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div style="font:700 22px/1 'Barlow Semi Condensed';">My Workouts</div>
+          <div style="font:400 14px/1.4 'Barlow';color:#8b93a3;margin-top:6px;">Your saved sessions. Load a file or build one in the Editor.</div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <label style="display:flex;align-items:center;gap:8px;padding:11px 18px;border-radius:11px;background:#c8f651;color:#0e1015;font:700 13px/1 'Barlow Semi Condensed';letter-spacing:.05em;cursor:pointer;">Load Workout<input type="file" style="display:none;"/></label>
+          <div onClick="{{ goEditor }}" style="padding:11px 18px;border-radius:11px;background:#1c2129;border:1px solid rgba(255,255,255,.1);color:#eef1f6;font:600 13px/1 'Barlow Semi Condensed';letter-spacing:.05em;cursor:pointer;">New in Editor</div>
+        </div>
+      </div>
+      <div style="font:400 12px/1.5 'Barlow';color:#626b7a;margin-bottom:18px;">Accepts <b style="color:#8b93a3;">.zwo</b> workouts and <b style="color:#8b93a3;">.fit</b> course files.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <sc-for list="{{ mine }}" as="w" hint-placeholder-count="2">
+          <div onClick="{{ w.open }}" style="display:flex;align-items:center;gap:20px;background:#15181f;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:14px 18px;cursor:pointer;">
+            <div style="display:flex;align-items:flex-end;gap:2px;height:40px;width:130px;">
+              <sc-for list="{{ w.bars }}" as="b" hint-placeholder-count="9"><div style="flex:1;height:{{ b }}%;background:{{ w.color }};border-radius:2px;opacity:.85;"></div></sc-for>
+            </div>
+            <div style="flex:1;min-width:0;"><div style="font:600 16px/1 'Barlow Semi Condensed';">{{ w.name }}</div><div style="font:400 13px/1.4 'Barlow';color:#7f8798;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ w.desc }}</div></div>
+            <div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.1em;text-transform:uppercase;color:{{ w.color }};min-width:80px;">{{ w.cat }}</div>
+            <div style="font:600 15px/1 'Barlow Semi Condensed';color:#c4cbd6;min-width:56px;text-align:right;">{{ w.dur }}</div>
+            <div style="padding:9px 16px;border-radius:9px;background:#1c2129;border:1px solid rgba(255,255,255,.1);font:700 12px/1 'Barlow Semi Condensed';letter-spacing:.06em;color:#c8f651;">START</div>
+            <div style="color:#626b7a;font-size:16px;width:16px;text-align:center;">{{ w.chev }}</div>
+          </div>
+          <sc-if value="{{ w.isOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#12141a;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:18px 20px 14px;margin-top:-2px;">
+              <div style="display:flex;">
+                <div style="position:relative;width:44px;height:170px;flex:0 0 auto;">
+                  <div style="position:absolute;right:6px;top:-5px;font:700 9px/1 'Barlow Semi Condensed';color:#8b93a3;">150%</div>
+                  <div style="position:absolute;right:6px;top:calc(33.3% - 5px);font:700 9px/1 'Barlow Semi Condensed';color:#8b93a3;">100%</div>
+                  <div style="position:absolute;right:6px;top:calc(66.6% - 5px);font:700 9px/1 'Barlow Semi Condensed';color:#8b93a3;">50%</div>
+                  <div style="position:absolute;right:6px;bottom:-2px;font:700 9px/1 'Barlow Semi Condensed';color:#7f8798;">0%</div>
+                </div>
+                <div style="position:relative;flex:1;height:170px;">
+                  <div style="position:absolute;inset:0;border-left:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1);"></div>
+                  <div style="position:absolute;left:0;right:0;top:33.3%;border-top:1px dashed rgba(255,255,255,.06);"></div>
+                  <div style="position:absolute;left:0;right:0;top:66.6%;border-top:1px dashed rgba(255,255,255,.06);"></div>
+                  <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px;padding-left:2px;">
+                    <sc-for list="{{ w.prof }}" as="seg" hint-placeholder-count="9">
+                      <div style="flex:1;height:100%;position:relative;display:flex;align-items:flex-end;">
+                        <div style="width:100%;height:{{ seg.hpct }}%;background:{{ seg.color }};border-radius:2px 2px 0 0;opacity:.9;"></div>
+                        <sc-if value="{{ seg.showWatt }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;left:0;right:0;bottom:calc({{ seg.hpct }}% + 3px);text-align:center;font:700 9px/1 'Barlow Semi Condensed';color:#fff;white-space:nowrap;">{{ seg.watts }}W</span></sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;"><div style="width:44px;flex:0 0 auto;"></div><div style="position:relative;flex:1;height:14px;margin-top:6px;"><sc-for list="{{ w.ticks }}" as="t" hint-placeholder-count="5"><span style="position:absolute;left:{{ t.left }}%;transform:translateX(-50%);font:600 9px/1 'Barlow Semi Condensed';color:#5f6775;">{{ t.label }}</span></sc-for></div></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;">
+                <div style="font:400 14px/1.55 'Barlow';color:#c4cbd6;flex:1;">{{ w.desc }}</div>
+                <div style="padding:10px 22px;border-radius:10px;background:#c8f651;color:#0e1015;font:700 13px/1 'Barlow Semi Condensed';letter-spacing:.05em;cursor:pointer;white-space:nowrap;">Start Workout</div>
+              </div>
+            </div>
+          </sc-if>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <!-- DEFAULT -->
+      <sc-if value="{{ showDefault }}" hint-placeholder-val="{{ false }}">
+      <div style="font:700 22px/1 'Barlow Semi Condensed';margin-bottom:16px;">Default Workouts</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <sc-for list="{{ defaults }}" as="w" hint-placeholder-count="10">
+          <div onClick="{{ w.open }}" style="display:flex;align-items:center;gap:20px;background:#15181f;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:14px 18px;cursor:pointer;">
+            <div style="display:flex;align-items:flex-end;gap:2px;height:40px;width:130px;">
+              <sc-for list="{{ w.bars }}" as="b" hint-placeholder-count="9"><div style="flex:1;height:{{ b }}%;background:{{ w.color }};border-radius:2px;opacity:.85;"></div></sc-for>
+            </div>
+            <div style="flex:1;min-width:0;"><div style="font:600 16px/1 'Barlow Semi Condensed';">{{ w.name }}</div><div style="font:400 13px/1.4 'Barlow';color:#7f8798;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ w.desc }}</div></div>
+            <div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.1em;text-transform:uppercase;color:{{ w.color }};min-width:80px;">{{ w.cat }}</div>
+            <div style="font:600 15px/1 'Barlow Semi Condensed';color:#c4cbd6;min-width:56px;text-align:right;">{{ w.dur }}</div>
+            <div style="padding:9px 16px;border-radius:9px;background:#1c2129;border:1px solid rgba(255,255,255,.1);font:700 12px/1 'Barlow Semi Condensed';letter-spacing:.06em;color:#c8f651;">START</div>
+            <div style="color:#626b7a;font-size:16px;width:16px;text-align:center;">{{ w.chev }}</div>
+          </div>
+          <sc-if value="{{ w.isOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#12141a;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:18px 20px 14px;margin-top:-2px;">
+              <div style="display:flex;">
+                <div style="position:relative;width:44px;height:170px;flex:0 0 auto;">
+                  <div style="position:absolute;right:6px;top:-5px;font:700 9px/1 'Barlow Semi Condensed';color:#8b93a3;">150%</div>
+                  <div style="position:absolute;right:6px;top:calc(33.3% - 5px);font:700 9px/1 'Barlow Semi Condensed';color:#8b93a3;">100%</div>
+                  <div style="position:absolute;right:6px;top:calc(66.6% - 5px);font:700 9px/1 'Barlow Semi Condensed';color:#8b93a3;">50%</div>
+                  <div style="position:absolute;right:6px;bottom:-2px;font:700 9px/1 'Barlow Semi Condensed';color:#7f8798;">0%</div>
+                </div>
+                <div style="position:relative;flex:1;height:170px;">
+                  <div style="position:absolute;inset:0;border-left:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1);"></div>
+                  <div style="position:absolute;left:0;right:0;top:33.3%;border-top:1px dashed rgba(255,255,255,.06);"></div>
+                  <div style="position:absolute;left:0;right:0;top:66.6%;border-top:1px dashed rgba(255,255,255,.06);"></div>
+                  <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px;padding-left:2px;">
+                    <sc-for list="{{ w.prof }}" as="seg" hint-placeholder-count="9">
+                      <div style="flex:1;height:100%;position:relative;display:flex;align-items:flex-end;">
+                        <div style="width:100%;height:{{ seg.hpct }}%;background:{{ seg.color }};border-radius:2px 2px 0 0;opacity:.9;"></div>
+                        <sc-if value="{{ seg.showWatt }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;left:0;right:0;bottom:calc({{ seg.hpct }}% + 3px);text-align:center;font:700 9px/1 'Barlow Semi Condensed';color:#fff;white-space:nowrap;">{{ seg.watts }}W</span></sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;"><div style="width:44px;flex:0 0 auto;"></div><div style="position:relative;flex:1;height:14px;margin-top:6px;"><sc-for list="{{ w.ticks }}" as="t" hint-placeholder-count="5"><span style="position:absolute;left:{{ t.left }}%;transform:translateX(-50%);font:600 9px/1 'Barlow Semi Condensed';color:#5f6775;">{{ t.label }}</span></sc-for></div></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:12px;">
+                <div style="font:400 14px/1.55 'Barlow';color:#c4cbd6;flex:1;">{{ w.desc }}</div>
+                <div style="padding:10px 22px;border-radius:10px;background:#c8f651;color:#0e1015;font:700 13px/1 'Barlow Semi Condensed';letter-spacing:.05em;cursor:pointer;white-space:nowrap;">Start Workout</div>
+              </div>
+            </div>
+          </sc-if>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <!-- COMPLETED -->
+      <sc-if value="{{ showCompleted }}" hint-placeholder-val="{{ false }}">
+      <div style="font:700 22px/1 'Barlow Semi Condensed';margin-bottom:6px;">Completed Workouts</div>
+      <div style="font:400 14px/1 'Barlow';color:#8b93a3;margin-bottom:18px;">Your ride history and saved activities.</div>
+      <div style="display:grid;grid-template-columns:1.4fr repeat(4,minmax(0,1fr)) auto;gap:12px;padding:0 18px 10px;font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.12em;text-transform:uppercase;color:#626b7a;">
+        <div>Workout</div><div style="text-align:right;">Duration</div><div style="text-align:right;">Avg Power</div><div style="text-align:right;">NP · TSS</div><div style="text-align:right;">Avg HR</div><div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <sc-for list="{{ completed }}" as="c" hint-placeholder-count="5">
+          <div onClick="{{ c.open }}" style="display:grid;grid-template-columns:1.4fr repeat(4,minmax(0,1fr)) auto;gap:12px;align-items:center;background:#15181f;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:14px 18px;cursor:pointer;">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div style="display:flex;align-items:flex-end;gap:1.5px;height:30px;width:64px;"><sc-for list="{{ c.bars }}" as="b" hint-placeholder-count="9"><div style="flex:1;height:{{ b }}%;background:{{ c.color }};border-radius:1px;opacity:.8;"></div></sc-for></div>
+              <div><div style="font:600 15px/1 'Barlow Semi Condensed';">{{ c.name }}</div><div style="font:500 12px/1 'Barlow Semi Condensed';color:#7f8798;margin-top:5px;letter-spacing:.04em;">{{ c.date }}</div></div>
+            </div>
+            <div style="text-align:right;font:600 15px/1 'Barlow Semi Condensed';">{{ c.dur }}</div>
+            <div style="text-align:right;font:600 15px/1 'Barlow Semi Condensed';">{{ c.avg }}</div>
+            <div style="text-align:right;font:600 15px/1 'Barlow Semi Condensed';">{{ c.nptss }}</div>
+            <div style="text-align:right;font:600 15px/1 'Barlow Semi Condensed';color:#ff5470;">{{ c.hr }}</div>
+            <div style="color:#626b7a;font-size:16px;text-align:right;">{{ c.chev }}</div>
+          </div>
+          <sc-if value="{{ c.isOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#12141a;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:18px 20px 14px;margin-top:-2px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#8b93a3;">Ride Analysis</span>
+                <div style="display:flex;align-items:center;gap:14px;">
+                  <div style="display:flex;align-items:center;gap:6px;"><span style="width:16px;height:3px;border-radius:2px;background:linear-gradient(90deg,#3b4250,#3d8bfd,#22c55e,#eab308,#f97316,#ef4444);"></span><span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.08em;color:#8b93a3;">POWER</span></div>
+                  <div style="display:flex;align-items:center;gap:6px;"><span style="width:16px;height:2px;background:#ff5470;border-radius:2px;"></span><span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.08em;color:#8b93a3;">HR</span></div>
+                  <div style="display:flex;align-items:center;gap:6px;"><span style="width:16px;height:2px;background:#38bdf8;border-radius:2px;"></span><span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.08em;color:#8b93a3;">CAD</span></div>
+                </div>
+              </div>
+              <div style="display:flex;">
+                <div style="position:relative;width:44px;height:190px;flex:0 0 auto;">
+                  <div style="position:absolute;right:6px;top:-5px;font:700 9px/1 'Barlow Semi Condensed';color:#8b93a3;">150%</div>
+                  <div style="position:absolute;right:6px;top:calc(33.3% - 5px);font:700 9px/1 'Barlow Semi Condensed';color:#8b93a3;">100%</div>
+                  <div style="position:absolute;right:6px;top:calc(66.6% - 5px);font:700 9px/1 'Barlow Semi Condensed';color:#8b93a3;">50%</div>
+                  <div style="position:absolute;right:6px;bottom:-2px;font:700 9px/1 'Barlow Semi Condensed';color:#7f8798;">0%</div>
+                </div>
+                <div style="position:relative;flex:1;height:190px;">
+                  <div style="position:absolute;inset:0;border-left:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1);"></div>
+                  <div style="position:absolute;left:0;right:0;top:33.3%;border-top:1px dashed rgba(255,255,255,.06);"></div>
+                  <div style="position:absolute;left:0;right:0;top:66.6%;border-top:1px dashed rgba(255,255,255,.06);"></div>
+                  <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px;padding-left:2px;">
+                    <sc-for list="{{ c.prof }}" as="seg" hint-placeholder-count="9">
+                      <div style="flex:1;height:{{ seg.hpct }}%;background:{{ seg.color }};border-radius:2px 2px 0 0;opacity:.4;"></div>
+                    </sc-for>
+                  </div>
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;">
+                    <defs><linearGradient id="actGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" stop-color="#ef4444"></stop><stop offset="0.12" stop-color="#ef4444"></stop>
+                      <stop offset="0.25" stop-color="#f97316"></stop><stop offset="0.35" stop-color="#eab308"></stop>
+                      <stop offset="0.45" stop-color="#22c55e"></stop><stop offset="0.57" stop-color="#3d8bfd"></stop>
+                      <stop offset="0.80" stop-color="#3b4250"></stop><stop offset="1" stop-color="#3b4250"></stop>
+                    </linearGradient></defs>
+                    <polyline points="{{ c.detCadPts }}" fill="none" stroke="#38bdf8" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity="0.85"></polyline>
+                    <polyline points="{{ c.detHrPts }}" fill="none" stroke="#ff5470" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" opacity="0.9"></polyline>
+                    <polyline points="{{ c.detPowPts }}" fill="none" stroke="url(#actGrad)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
+                  </svg>
+                </div>
+                <div style="position:relative;width:54px;flex:0 0 auto;height:190px;margin-left:8px;">
+                  <div style="position:absolute;left:2px;top:-5px;font:700 9px/1 'Barlow Semi Condensed';color:#ff5470;">180</div>
+                  <div style="position:absolute;left:2px;top:calc(50% - 5px);font:700 9px/1 'Barlow Semi Condensed';color:#ff5470;">135</div>
+                  <div style="position:absolute;left:2px;bottom:-2px;font:700 9px/1 'Barlow Semi Condensed';color:#ff5470;">90</div>
+                  <div style="position:absolute;left:0;bottom:-18px;font:600 8px/1 'Barlow Semi Condensed';color:#ff5470;">bpm</div>
+                  <div style="position:absolute;left:30px;top:-5px;font:700 9px/1 'Barlow Semi Condensed';color:#38bdf8;">120</div>
+                  <div style="position:absolute;left:30px;top:calc(50% - 5px);font:700 9px/1 'Barlow Semi Condensed';color:#38bdf8;">80</div>
+                  <div style="position:absolute;left:30px;bottom:-2px;font:700 9px/1 'Barlow Semi Condensed';color:#38bdf8;">40</div>
+                  <div style="position:absolute;left:28px;bottom:-18px;font:600 8px/1 'Barlow Semi Condensed';color:#38bdf8;">rpm</div>
+                </div>
+              </div>
+              <div style="display:flex;"><div style="width:44px;flex:0 0 auto;"></div><div style="position:relative;flex:1;height:14px;margin-top:6px;"><sc-for list="{{ c.ticks }}" as="t" hint-placeholder-count="5"><span style="position:absolute;left:{{ t.left }}%;transform:translateX(-50%);font:600 9px/1 'Barlow Semi Condensed';color:#5f6775;">{{ t.label }}</span></sc-for></div><div style="width:62px;flex:0 0 auto;"></div></div>
+            </div>
+          </sc-if>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <!-- EDITOR -->
+      <sc-if value="{{ showEditor }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <div style="font:700 22px/1 'Barlow Semi Condensed';">Workout Editor</div>
+        <div style="display:flex;gap:10px;">
+          <div style="padding:10px 16px;border-radius:10px;background:#1c2129;border:1px solid rgba(255,255,255,.1);font:600 12px/1 'Barlow Semi Condensed';color:#c4cbd6;">Load…</div>
+          <div style="padding:10px 16px;border-radius:10px;background:#1c2129;border:1px solid rgba(255,255,255,.1);font:600 12px/1 'Barlow Semi Condensed';color:#c4cbd6;">Clear</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 240px;gap:14px;margin-bottom:16px;">
+        <div><div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.12em;text-transform:uppercase;color:#7f8798;margin-bottom:7px;">Name</div><div style="background:#15181f;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;font:600 15px/1 'Barlow Semi Condensed';">Sunday Sweet Spot</div></div>
+        <div><div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.12em;text-transform:uppercase;color:#7f8798;margin-bottom:7px;">Category</div><div style="background:#15181f;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;font:600 15px/1 'Barlow Semi Condensed';display:flex;justify-content:space-between;align-items:center;">Sweet Spot <span style="color:#626b7a;">▾</span></div></div>
+      </div>
+      <div style="background:#15181f;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:20px 24px 12px;margin-bottom:16px;">
+        <div style="position:relative;height:240px;">
+          <div style="position:absolute;inset:0;border-left:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);"></div>
+          <div style="position:absolute;left:0;right:0;top:25%;border-top:1px dashed rgba(255,255,255,.06);"></div>
+          <div style="position:absolute;left:0;right:0;top:50%;border-top:1px dashed rgba(255,255,255,.06);"></div>
+          <div style="position:absolute;left:0;right:0;top:75%;border-top:1px dashed rgba(255,255,255,.06);"></div>
+          <div style="position:absolute;left:8px;top:23%;font:600 10px/1 'Barlow Semi Condensed';color:#5f6775;">150% · 300W</div>
+          <div style="position:absolute;left:8px;top:48%;font:600 10px/1 'Barlow Semi Condensed';color:#5f6775;">100% · 200W</div>
+          <div style="position:absolute;left:8px;top:73%;font:600 10px/1 'Barlow Semi Condensed';color:#5f6775;">50% · 100W</div>
+          <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:3px;">
+            <div style="flex:5;height:100%;display:flex;align-items:flex-end;"><div style="width:100%;height:100%;background:#3d8bfd;opacity:.55;clip-path:polygon(0 74%,100% 60%,100% 100%,0 100%);border-radius:2px;"></div></div>
+            <div style="flex:10;height:100%;display:flex;align-items:flex-end;position:relative;"><div style="width:100%;height:59%;background:#22c55e;opacity:.8;border-radius:3px 3px 0 0;"></div><span style="position:absolute;left:0;right:0;bottom:calc(59% + 5px);text-align:center;font:700 11px/1 'Barlow Semi Condensed';color:#fff;">176W · 10:00</span></div>
+            <div style="flex:5;height:100%;display:flex;align-items:flex-end;"><div style="width:100%;height:33%;background:#3b4250;opacity:.85;border-radius:3px 3px 0 0;"></div></div>
+          </div>
+        </div>
+        <div style="text-align:center;font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.08em;color:#7f8798;margin-top:10px;">3 BLOCKS · 20:00 · FTP 200 W</div>
+      </div>
+      <div style="background:#15181f;border:1px solid rgba(255,255,255,.06);border-radius:14px;overflow:hidden;margin-bottom:18px;">
+        <div style="display:grid;grid-template-columns:36px 1fr 1fr 1fr 1fr 1fr 70px;gap:12px;padding:12px 18px;font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.1em;text-transform:uppercase;color:#626b7a;border-bottom:1px solid rgba(255,255,255,.06);">
+          <div>#</div><div>Duration</div><div>Start</div><div>End</div><div>Cadence</div><div>Slope</div><div></div>
+        </div>
+        <sc-for list="{{ blocks }}" as="bl" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:36px 1fr 1fr 1fr 1fr 1fr 70px;gap:12px;padding:12px 18px;align-items:center;border-bottom:1px solid rgba(255,255,255,.04);font:600 14px/1 'Barlow Semi Condensed';">
+            <div style="color:#626b7a;">{{ bl.n }}</div>
+            <div><span style="background:#1c2129;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:6px 10px;display:inline-block;">{{ bl.dur }}</span></div>
+            <div>{{ bl.start }} <span style="color:#7f8798;font-size:11px;">{{ bl.startW }}</span></div>
+            <div>{{ bl.end }} <span style="color:#7f8798;font-size:11px;">{{ bl.endW }}</span></div>
+            <div style="color:#626b7a;">—</div>
+            <div style="color:#626b7a;">—</div>
+            <div style="color:#626b7a;text-align:right;font-size:15px;letter-spacing:1px;">↑ ↓ ✕</div>
+          </div>
+        </sc-for>
+        <div style="padding:12px 18px;text-align:center;"><span style="font:700 12px/1 'Barlow Semi Condensed';letter-spacing:.06em;color:#c8f651;">+ ADD BLOCK</span></div>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <div style="padding:12px 22px;border-radius:11px;background:#c8f651;color:#0e1015;font:700 13px/1 'Barlow Semi Condensed';letter-spacing:.05em;">Save to Library</div>
+        <div style="padding:12px 22px;border-radius:11px;background:#1c2129;border:1px solid rgba(255,255,255,.1);font:600 13px/1 'Barlow Semi Condensed';letter-spacing:.05em;color:#c4cbd6;">Download .zwo</div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <!-- ===================== SETTINGS ===================== -->
+    <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:1120px;margin:0 auto;padding:0 32px 40px;">
+      <div style="display:flex;align-items:center;gap:24px;padding:22px 0 20px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:24px;">
+        <div style="font:700 20px/1 'Barlow Semi Condensed';letter-spacing:.24em;">WATTS</div>
+        <div style="display:flex;gap:6px;margin-left:8px;">
+          <div onClick="{{ goTrainer }}" style="{{ stabTrainer }}">Trainer</div>
+          <div onClick="{{ goAccount }}" style="{{ stabAccount }}">Account</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ isAccount }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:14px;">
+        <div style="background:linear-gradient(135deg,#181c24,#14171e);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:30px 32px;">
+          <div style="font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#8b93a3;">Sign in to WATTS</div>
+          <div style="font:400 14px/1.5 'Barlow';color:#8b93a3;margin-top:8px;max-width:340px;">Sync your FTP, workouts and ride history across devices.</div>
+          <div style="display:flex;flex-direction:column;gap:14px;margin-top:24px;max-width:400px;">
+            <div>
+              <div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.12em;text-transform:uppercase;color:#7f8798;margin-bottom:7px;">Email</div>
+              <div style="background:#12141a;border:1px solid rgba(255,255,255,.12);border-radius:11px;padding:13px 15px;font:500 15px/1 'Barlow';color:#626b7a;">you@example.com</div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;"><span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.12em;text-transform:uppercase;color:#7f8798;">Password</span><span style="font:600 11px/1 'Barlow Semi Condensed';color:#c8f651;cursor:pointer;">Forgot?</span></div>
+              <div style="background:#12141a;border:1px solid rgba(255,255,255,.12);border-radius:11px;padding:13px 15px;font:500 15px/1 'Barlow';color:#626b7a;letter-spacing:.2em;">••••••••</div>
+            </div>
+            <div style="margin-top:4px;padding:14px;border-radius:11px;background:#c8f651;color:#0e1015;text-align:center;font:700 14px/1 'Barlow Semi Condensed';letter-spacing:.06em;cursor:pointer;">Sign In</div>
+            <div style="display:flex;align-items:center;gap:12px;color:#5f6775;font:600 10px/1 'Barlow Semi Condensed';letter-spacing:.14em;"><span style="flex:1;height:1px;background:rgba(255,255,255,.1);"></span>OR<span style="flex:1;height:1px;background:rgba(255,255,255,.1);"></span></div>
+            <div style="display:flex;gap:10px;">
+              <div style="flex:1;padding:12px;border-radius:11px;background:#1c2129;border:1px solid rgba(255,255,255,.1);text-align:center;font:600 13px/1 'Barlow Semi Condensed';color:#c4cbd6;cursor:pointer;">Google</div>
+              <div style="flex:1;padding:12px;border-radius:11px;background:#1c2129;border:1px solid rgba(255,255,255,.1);text-align:center;font:600 13px/1 'Barlow Semi Condensed';color:#c4cbd6;cursor:pointer;">Apple</div>
+            </div>
+            <div style="text-align:center;font:400 13px/1 'Barlow';color:#8b93a3;margin-top:4px;">New here? <span style="color:#c8f651;cursor:pointer;font-weight:600;">Create an account</span></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="background:#15181f;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:22px 24px;">
+            <div style="font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#8b93a3;">Why sign in</div>
+            <div style="display:flex;flex-direction:column;gap:14px;margin-top:16px;">
+              <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:#c8f651;font-size:15px;line-height:1.3;">↻</span><div><div style="font:600 14px/1 'Barlow Semi Condensed';">Cloud sync</div><div style="font:400 13px/1.45 'Barlow';color:#8b93a3;margin-top:3px;">Workouts and settings follow you to any device.</div></div></div>
+              <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:#c8f651;font-size:15px;line-height:1.3;">↥</span><div><div style="font:600 14px/1 'Barlow Semi Condensed';">Auto-upload activities</div><div style="font:400 13px/1.45 'Barlow';color:#8b93a3;margin-top:3px;">Completed rides export to Strava &amp; intervals.icu.</div></div></div>
+              <div style="display:flex;gap:12px;align-items:flex-start;"><span style="color:#c8f651;font-size:15px;line-height:1.3;">◷</span><div><div style="font:600 14px/1 'Barlow Semi Condensed';">Training history</div><div style="font:400 13px/1.45 'Barlow';color:#8b93a3;margin-top:3px;">Track FTP progression and load over time.</div></div></div>
+            </div>
+          </div>
+          <div style="background:#15181f;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px 24px;display:flex;align-items:center;gap:14px;">
+            <div style="width:44px;height:44px;border-radius:50%;background:#1c2129;border:1px solid rgba(255,255,255,.1);display:grid;place-items:center;color:#5f6775;font-size:18px;">?</div>
+            <div><div style="font:600 14px/1 'Barlow Semi Condensed';color:#c4cbd6;">Not signed in</div><div style="font:400 12px/1.4 'Barlow';color:#7f8798;margin-top:3px;">Riding as a guest — data stays on this device.</div></div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isTrainer }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+        <div style="background:linear-gradient(135deg,#181c24,#14171e);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:22px 24px;">
+          <div style="font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#8b93a3;">Rider Profile</div>
+          <div style="display:flex;align-items:stretch;gap:26px;margin-top:16px;">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.1em;color:#7f8798;">FTP</span><span style="width:20px;height:20px;border-radius:6px;background:#1c2129;border:1px solid rgba(255,255,255,.1);display:grid;place-items:center;font-size:11px;color:#c8f651;cursor:pointer;">✎</span></div>
+              <div style="font:700 46px/.9 'Barlow Semi Condensed';color:#c8f651;margin-top:6px;"><span contentEditable="true" spellcheck="false" style="display:inline-block;min-width:3ch;text-align:center;outline:none;border-bottom:2px solid rgba(200,246,81,.4);padding:0 2px;cursor:text;">200</span><span style="font-size:16px;color:#8b93a3;"> W</span></div>
+            </div>
+            <div style="width:1px;align-self:stretch;background:rgba(255,255,255,.1);"></div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.1em;color:#7f8798;">Weight</span><span style="width:20px;height:20px;border-radius:6px;background:#1c2129;border:1px solid rgba(255,255,255,.1);display:grid;place-items:center;font-size:11px;color:#c8f651;cursor:pointer;">✎</span></div>
+              <div style="font:700 46px/.9 'Barlow Semi Condensed';margin-top:6px;"><span contentEditable="true" spellcheck="false" style="display:inline-block;min-width:3ch;text-align:center;outline:none;border-bottom:2px solid rgba(255,255,255,.25);padding:0 2px;cursor:text;">75</span><span style="font-size:16px;color:#8b93a3;"> kg</span></div>
+            </div>
+            <div style="width:1px;align-self:stretch;background:rgba(255,255,255,.1);"></div>
+            <div>
+              <div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.1em;color:#7f8798;">FTP / kg</div>
+              <div style="font:700 46px/.9 'Barlow Semi Condensed';margin-top:6px;">2.67<span style="font-size:16px;color:#8b93a3;"> W/kg</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="background:#15181f;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:22px 24px;display:flex;flex-direction:column;gap:16px;">
+          <div style="font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#8b93a3;">Options</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span style="font:600 14px/1 'Barlow Semi Condensed';color:#c4cbd6;">Units</span>
+            <div style="display:flex;background:#1c2129;border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:3px;gap:2px;"><span style="padding:6px 14px;border-radius:6px;background:#c8f651;color:#0e1015;font:700 12px/1 'Barlow Semi Condensed';">Metric</span><span style="padding:6px 14px;border-radius:6px;color:#8b93a3;font:600 12px/1 'Barlow Semi Condensed';">Imperial</span></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span style="font:600 14px/1 'Barlow Semi Condensed';color:#c4cbd6;">Sound</span>
+            <div style="display:flex;align-items:center;gap:12px;width:180px;"><div style="flex:1;height:6px;border-radius:3px;background:#1c2129;position:relative;"><div style="position:absolute;inset:0 60% 0 0;background:#c8f651;border-radius:3px;"></div><div style="position:absolute;left:40%;top:-4px;width:14px;height:14px;border-radius:50%;background:#eef1f6;"></div></div><span style="font:700 13px/1 'Barlow Semi Condensed';width:34px;text-align:right;">40%</span></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <span style="font:600 14px/1 'Barlow Semi Condensed';color:#c4cbd6;">Lock controls by default</span>
+            <div onClick="{{ toggleLock }}" style="{{ lockTrackStyle }}"><div style="{{ lockKnobStyle }}"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="font:600 12px/1 'Barlow Semi Condensed';letter-spacing:.14em;text-transform:uppercase;color:#8b93a3;margin:22px 0 14px;">Connected Devices</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <sc-for list="{{ devices }}" as="d" hint-placeholder-count="6">
+          <div style="background:#15181f;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px 18px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:34px;height:34px;border-radius:9px;background:#1c2129;display:grid;place-items:center;color:#5b9bff;font-size:16px;">ᛒ</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.1em;text-transform:uppercase;color:#7f8798;">{{ d.type }}</div>
+                <div style="font:600 15px/1 'Barlow Semi Condensed';margin-top:5px;">{{ d.name }}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;background:{{ d.pillBg }};">
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ d.dot }};"></span>
+                <span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.06em;color:{{ d.statusColor }};">{{ d.status }}</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+              <sc-for list="{{ d.chips }}" as="ch" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:10px;background:{{ ch.bg }};border:1px solid {{ ch.border }};">
+                  <span style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.08em;text-transform:uppercase;color:#8b93a3;">{{ ch.label }}</span>
+                  <span style="font:700 15px/1 'Barlow Semi Condensed';color:{{ ch.valColor }};">{{ ch.val }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav style="display:flex;justify-content:center;gap:64px;padding:12px 0 14px;background:#12141a;border-top:1px solid rgba(255,255,255,.07);">
+    <div onClick="{{ goSettings }}" style="{{ navSettings }}">
+      <div style="font-size:20px;line-height:1;">⚙</div>
+      <div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.1em;text-transform:uppercase;">Settings</div>
+    </div>
+    <div onClick="{{ goHome }}" style="{{ navHome }}">
+      <div style="font-size:20px;line-height:1;">⌂</div>
+      <div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.1em;text-transform:uppercase;">Home</div>
+    </div>
+    <div onClick="{{ goWorkouts }}" style="{{ navWorkouts }}">
+      <div style="font-size:20px;line-height:1;">☰</div>
+      <div style="font:600 11px/1 'Barlow Semi Condensed';letter-spacing:.1em;text-transform:uppercase;">Workouts</div>
+    </div>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = { screen:'home', tab:'my', locked:true, rattle:false, zoom:1, stab:'trainer', expanded:null };
+
+  bump(){
+    if(!this.state.locked) return;
+    this.setState({ rattle:true });
+    clearTimeout(this._rt);
+    this._rt = setTimeout(()=>this.setState({ rattle:false }), 520);
+  }
+  setZoom(d){
+    this.setState(s=>({ zoom:Math.min(6,Math.max(1,+(s.zoom+d).toFixed(2))) }));
+    setTimeout(()=>{ if(this.state.zoom>1) this.scrollToCurrent(); else if(this._scroll) this._scroll.scrollLeft=0; }, 40);
+  }
+  fit(){ if(this._scroll) this._scroll.scrollLeft=0; this.setState({ zoom:1 }); }
+  scrollToCurrent(){
+    const el=this._scroll; if(!el) return;
+    el.scrollLeft = Math.max(0, (this._posPct/100)*el.scrollWidth - el.clientWidth/2);
+  }
+
+  segData(){
+    const FTP=200;
+    const raw=[
+      {p:45,d:150},{p:62,d:150},
+      {p:120,d:60,on:1},{p:55,d:60},{p:120,d:60,on:1},{p:55,d:60},{p:120,d:60,on:1},{p:55,d:60},{p:120,d:60,on:1},{p:55,d:60},
+      {p:50,d:180},
+      {p:120,d:60,on:1},{p:55,d:60},{p:120,d:60,on:1},{p:55,d:60},{p:120,d:60,on:1},{p:55,d:60},{p:120,d:60,on:1},{p:55,d:60},
+      {p:48,d:240}
+    ];
+    const total=raw.reduce((a,b)=>a+b.d,0);
+    let t=0;
+    const segs=raw.map(r=>{
+      const start=t; t+=r.d;
+      const watts=Math.round(r.p/100*FTP);
+      const p=r.p;
+      let color='#ef4444';
+      if(p<=55)color='#3b4250'; else if(p<=75)color='#3d8bfd'; else if(p<=90)color='#22c55e'; else if(p<=105)color='#eab308'; else if(p<=120)color='#f97316';
+      const mm=Math.floor(r.d/60), ss=r.d%60;
+      const durLabel=`${mm}:${String(ss).padStart(2,'0')}`;
+      return { flex:r.d, hpct:Math.round(Math.min(p/150*100,100)), color, watts, on:!!r.on, showWatt:!!r.on, showDur:true, durLabel };
+    });
+    return { segs, total };
+  }
+
+  renderVals(){
+    const s=this.state;
+    const { segs, total } = this.segData();
+    const ticks=[0,5,10,15,20,25].map(m=>({ label:`${m}:00`, left:Math.round(m*60/total*100) }));
+    const xEnd=570/total*100;
+    const genPts=(vals,vmin,vmax,x0,x1)=>vals.map((v,i)=>{
+      const x=x0+(i/(vals.length-1))*(x1-x0);
+      const y=Math.max(2,Math.min(98,100-((v-vmin)/(vmax-vmin))*100));
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(' ');
+    const expand=(bars,n)=>{ const out=[]; for(let i=0;i<n;i++){ const f=i/(n-1)*(bars.length-1); const lo=Math.floor(f), hi=Math.min(bars.length-1,Math.ceil(f)), t=f-lo; out.push(bars[lo]+(bars[hi]-bars[lo])*t); } return out; };
+    const colByPct=p=>{ if(p<=55)return'#3b4250'; if(p<=75)return'#3d8bfd'; if(p<=90)return'#22c55e'; if(p<=105)return'#eab308'; if(p<=120)return'#f97316'; if(p<=150)return'#ef4444'; return'#a855f7'; };
+    const hrVals=[121,124,128,131,133,136,138,140,143,145,146,148,149,150,152,153,154,155,155,156,156,157,157,158,158];
+    const cadVals=[90,92,91,94,93,95,96,94,97,95,96,98,95,96,94,97,96,95,96,97,95,96,97,96,96];
+    const powVals=[112,178,240,122,236,64,238,118,242,58,240,119,244,120,241,62,239,244,246,241,240,244,247,246,248];
+    const hrPts=genPts(hrVals,90,180,0,xEnd);
+    const cadPts=genPts(cadVals,40,120,0,xEnd);
+    const hrSpark=genPts(hrVals.slice(-16),90,180,0,100);
+    const powSpark=genPts(powVals.slice(-16),0,300,0,100);
+    const powHistPts=genPts(powVals,0,340,0,100);
+    const elapsedSec=570, NP=52;
+    const powFollow=[];
+    for(let i=0;i<NP;i++){
+      const tt=(i/(NP-1))*elapsedSec; let acc=0, w=segs[0].watts;
+      for(const sg of segs){ if(tt<acc+sg.flex){ w=sg.watts; break; } acc+=sg.flex; w=sg.watts; }
+      powFollow.push(Math.max(4, w + (Math.sin(i*1.7)+Math.sin(i*0.6))*3.5));
+    }
+    const powProfPts=genPts(powFollow,0,300,0,xEnd);
+    this._posPct=570/total*100;
+
+    const pat=[
+      [30,35,90,35,90,35,90,35,45],
+      [40,55,80,55,80,55,80,60,42],
+      [35,60,60,60,60,60,60,50,38],
+      [45,70,45,70,45,70,45,50,40],
+      [40,50,60,60,60,60,50,45,40]
+    ];
+    const catColor={'VO2 Max':'#f97316','HIIT':'#ef4444','Threshold':'#eab308','Sweet Spot':'#22c55e','Base':'#3d8bfd','Recovery':'#3b4250','Endurance':'#3d8bfd'};
+
+    const defRaw=[
+      ['Dijon','VO2 Max','57 min','60/60s — 60 sec ON at 121% FTP, 60 sec OFF. 2 groups of 8 reps.'],
+      ['Chili Pepper','VO2 Max','30 min','Short, punchy VO2 max repeats to raise your ceiling.'],
+      ['Chili Pepper +1','VO2 Max','45 min','Extended VO2 max session with an added block.'],
+      ['Quiche','HIIT','34 min','High-intensity 30/30 intervals over the threshold.'],
+      ['Quiche +1','HIIT','45 min','A longer HIIT effort with more repeats.'],
+      ['Salad','HIIT','45 min','Mixed micro-intervals for race sharpness.'],
+      ['Pasta','Threshold','70 min','Sustained threshold blocks to lift your FTP.'],
+      ['Potato Chips +1','Threshold','66 min','Over-unders around threshold, extended.'],
+      ['Potato Chips','Threshold','34 min','Compact over-under threshold session.'],
+      ['Maple','Sweet Spot','80 min','Long sweet-spot intervals for aerobic base.'],
+      ['Honey','Sweet Spot','80 min','Steady sweet spot with cadence variation.'],
+      ['Baguette','Base','90 min','Endurance base miles at a comfortable effort.'],
+      ['Baguette +1','Base','120 min','Two-hour endurance foundation ride.'],
+      ['Salmon','Base','90 min','Zone 2 endurance with light tempo touches.']
+    ];
+    const defaults=defRaw.map((r,i)=>({ name:r[0], cat:r[1], dur:r[2], desc:r[3], color:catColor[r[1]], bars:pat[i%pat.length] }));
+
+    const mine=[
+      { name:'Sunday Sweet Spot', cat:'Sweet Spot', dur:'62 min', desc:'3×12 min sweet-spot blocks at 90% FTP with short recoveries.', color:catColor['Sweet Spot'], bars:pat[1] },
+      { name:'Recovery Spin', cat:'Recovery', dur:'45 min', desc:'Easy Zone 1 flush ride to shake out the legs.', color:catColor['Recovery'], bars:[30,32,34,33,35,34,32,30,28] }
+    ];
+
+    const completed=[
+      { date:'Wed · Jul 22', name:'Dijon', cat:'VO2 Max', dur:'57:12', avg:'214 W', nptss:'236 · 78', hr:'162 bpm', color:catColor['VO2 Max'], bars:pat[0] },
+      { date:'Mon · Jul 20', name:'Pasta', cat:'Threshold', dur:'70:04', avg:'188 W', nptss:'196 · 84', hr:'151 bpm', color:catColor['Threshold'], bars:pat[2] },
+      { date:'Sat · Jul 18', name:'Baguette', cat:'Base', dur:'90:31', avg:'142 W', nptss:'149 · 61', hr:'128 bpm', color:catColor['Base'], bars:pat[4] },
+      { date:'Tue · Dec 30, 2025', name:'Quiche', cat:'HIIT', dur:'34:18', avg:'176 W', nptss:'221 · 52', hr:'158 bpm', color:catColor['HIIT'], bars:pat[3] },
+      { date:'Fri · Dec 12, 2025', name:'Maple', cat:'Sweet Spot', dur:'80:00', avg:'168 W', nptss:'174 · 79', hr:'144 bpm', color:catColor['Sweet Spot'], bars:pat[1] }
+    ];
+
+    const blocks=[
+      { n:1, dur:'05:00', start:'40%', startW:'80W', end:'60%', endW:'120W' },
+      { n:2, dur:'10:00', start:'88%', startW:'176W', end:'88%', endW:'176W' },
+      { n:3, dur:'05:00', start:'50%', startW:'100W', end:'50%', endW:'100W' }
+    ];
+
+    const onChip=(label,val,vc)=>({ label, val, valColor:vc||'#eef1f6', bg:'rgba(200,246,81,.06)', border:'rgba(200,246,81,.18)' });
+    const offChip=(label)=>({ label, val:'off', valColor:'#5f6775', bg:'#1c2129', border:'rgba(255,255,255,.06)' });
+    const conn={ status:'CONNECTED', statusColor:'#22c55e', dot:'#22c55e', pillBg:'rgba(34,197,94,.12)' };
+    const disc={ status:'CONNECT', statusColor:'#7f8798', dot:'#5f6775', pillBg:'#1c2129' };
+    const devices=[
+      { type:'Controllable', name:'KICKR CORE 5F2A', ...conn, chips:[onChip('Power','248 W'),onChip('Cadence','96'),onChip('Speed','39.4')] },
+      { type:'Power Meter', name:'Assioma DUO', ...conn, chips:[onChip('Power','251 W'),onChip('Cadence','95'),offChip('Speed')] },
+      { type:'Heart Rate', name:'Polar H10', ...conn, chips:[onChip('Heart Rate','158 bpm','#ff5470')] },
+      { type:'Speed & Cadence', name:'No device paired', ...disc, chips:[offChip('Cadence'),offChip('Speed')] },
+      { type:'Muscle Oxygen', name:'Moxy Monitor', ...conn, chips:[onChip('SmO₂','64 %'),onChip('THb','12.4')] },
+      { type:'Core Temp', name:'CORE Sensor', ...disc, chips:[offChip('Core'),offChip('Skin')] }
+    ];
+
+    completed.forEach(c=>{ c.bars=c.bars.map((h,i)=>Math.max(10,Math.min(100,Math.round(h+((i*37)%13)-6)))); });
+    const toggle=(id)=>()=>this.setState(st=>({expanded:st.expanded===id?null:id}));
+    const parseMin=(str)=>{ const m=String(str).match(/(\d+)/); return m?+m[1]:40; };
+    const buildProfile=(w)=>{
+      const total=parseMin(w.dur), n=w.bars.length;
+      w.prof=w.bars.map(h=>{ const pct=Math.round(h*1.5); return { hpct:h, watts:Math.round(h*3), color:colByPct(pct), showWatt:h>=58 }; });
+      w.ticks=[0,0.25,0.5,0.75,1].map(f=>({ label:Math.round(total*f)+':00', left:f*100 }));
+    };
+    const mkPlan=(w)=>{ w.id='p:'+w.name; w.isOpen=s.expanded===w.id; w.chev=w.isOpen?'⌃':'⌄'; w.open=toggle(w.id); buildProfile(w); };
+    const mkAct=(w)=>{ w.id='a:'+w.name; w.isOpen=s.expanded===w.id; w.chev=w.isOpen?'⌃':'⌄'; w.open=toggle(w.id); buildProfile(w);
+      const ex=expand(w.bars,60);
+      const powSamp=ex.map((v,i)=>Math.max(4,v+(Math.sin(i*1.3)+Math.sin(i*0.5))*4));
+      const hrSamp=ex.map((v,i)=>95+v*0.55+Math.sin(i*0.4)*4);
+      const cadSamp=powSamp.map((v,i)=> v>25?88+Math.sin(i*1.1)*5:72+Math.sin(i)*4);
+      w.detPowPts=genPts(powSamp,0,100,0,100); w.detHrPts=genPts(hrSamp,90,180,0,100); w.detCadPts=genPts(cadSamp,40,120,0,100);
+    };
+    defaults.forEach(mkPlan); mine.forEach(mkPlan); completed.forEach(mkAct);
+    const navBase='display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:color .15s;';
+    const nav=(n)=> navBase + (s.screen===n ? 'color:#c8f651;' : 'color:#7f8798;');
+    const tabBase='padding:9px 16px;border-radius:10px;cursor:pointer;font:600 13px/1 \'Barlow Semi Condensed\';letter-spacing:.04em;transition:all .15s;';
+    const tab=(n)=> tabBase + (s.tab===n ? 'background:#1c2129;color:#eef1f6;' : 'color:#7f8798;');
+    const stabS=(n)=> tabBase + (s.stab===n ? 'background:#1c2129;color:#eef1f6;' : 'color:#7f8798;');
+    return {
+      isHome:s.screen==='home', isWorkouts:s.screen==='workouts', isSettings:s.screen==='settings',
+      isMy:s.tab==='my', isDefault:s.tab==='default', isCompleted:s.tab==='completed', isEditor:s.tab==='editor',
+      goHome:()=>this.setState({screen:'home'}),
+      goWorkouts:()=>this.setState({screen:'workouts'}),
+      goSettings:()=>this.setState({screen:'settings'}),
+      goMy:()=>this.setState({screen:'workouts',tab:'my'}),
+      goDefault:()=>this.setState({screen:'workouts',tab:'default'}),
+      goCompleted:()=>this.setState({screen:'workouts',tab:'completed'}),
+      goEditor:()=>this.setState({screen:'workouts',tab:'editor'}),
+      showMy:s.tab==='my', showDefault:s.tab==='default', showCompleted:s.tab==='completed', showEditor:s.tab==='editor',
+      defaults, mine, completed,
+      navHome:nav('home'), navWorkouts:nav('workouts'), navSettings:nav('settings'),
+      tabMy:tab('my'), tabDefault:tab('default'), tabCompleted:tab('completed'), tabEditor:tab('editor'),
+      segs, ticks, posPct:Math.round(570/total*100), hrPts, cadPts, hrSpark, powSpark, powHistPts,
+      locked:s.locked,
+      lockIcon:s.locked?'🔒':'🔓',
+      lockStyle:'width:44px;height:44px;border-radius:12px;background:'+(s.locked?'#171a21':'rgba(200,246,81,.14)')+';border:1px solid '+(s.locked?'rgba(255,255,255,.07)':'rgba(200,246,81,.45)')+';display:grid;place-items:center;color:'+(s.locked?'#8b93a3':'#c8f651')+';font-size:18px;cursor:pointer;'+(s.rattle?'animation:rattle .52s ease;':''),
+      guardCursor:s.locked?'not-allowed':'pointer',
+      toggleLock:()=>this.setState({locked:!this.state.locked}),
+      guard:()=>this.bump(),
+      lockTrackStyle:'width:44px;height:24px;border-radius:999px;position:relative;cursor:pointer;transition:background .15s;background:'+(s.locked?'#c8f651':'#2b303b'),
+      lockKnobStyle:'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;transition:left .15s;left:'+(s.locked?'23px':'3px')+';background:'+(s.locked?'#0e1015':'#8b93a3'),
+      powProfPts, plotWidth:`${Math.round(s.zoom*100)}%`,
+      zoomIn:()=>this.setZoom(0.5), zoomOut:()=>this.setZoom(-0.5), fitZoom:()=>this.fit(), toCurrent:()=>this.scrollToCurrent(),
+      scrollRef:(el)=>{ this._scroll=el; },
+      isAccount:s.stab==='account', isTrainer:s.stab==='trainer',
+      goAccount:()=>this.setState({stab:'account'}), goTrainer:()=>this.setState({stab:'trainer'}),
+      stabAccount:stabS('account'), stabTrainer:stabS('trainer'),
+      defaults, mine, completed, blocks, devices
+    };
+  }
+}
+</script>
+</body>
+</html>

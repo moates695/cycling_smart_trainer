@@ -1,6 +1,6 @@
 {
-    "name": "Auuki",
-    "short_name": "Auuki",
+    "name": "Watts: smart trainer",
+    "short_name": "Watts",
     "description": "Cycling Structured Training",
     "start_url": "/",
     "display": "standalone",

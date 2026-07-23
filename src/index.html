@@ -10,11 +10,13 @@
         <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
         <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
 
-        <title>Auuki indoor cycling app for workouts with structured training</title>
+        <title>Watts: smart trainer</title>
         <meta name="description" content="indoor cycling app for workouts with smart trainers and power meters over bluetooth">
 
         <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
         <link href="css/flux.css" rel="stylesheet"/>
         <link rel="manifest" href="./manifest.webmanifest">
     </head>
@@ -35,344 +37,188 @@
             <page-group prop="page">
                 <compatibility-check></compatibility-check>
                 <div id="home-page" class="page active" page="home">
-                    <div id="home-page-wrapper">
+                    <div id="home-page-wrapper" class="watts-home">
+                        <div class="watts-home--inner">
 
-                        <header class="connections-header page-header">
-                            <connection-switch for="ble:controllable" id="switch-controllable" class="connection-switch">
-                                <div class="connection-switch--indicator off"></div>
-                                <div class="connection-switch--label">Controllable</div>
-                            </connection-switch>
-
-                            <connection-switch for="ble:heartRateMonitor" id="switch-hrm" class="connection-switch">
-                                <div class="connection-switch--indicator off"></div>
-                                <div class="connection-switch--label">HRM</div>
-                            </connection-switch>
-                        </header>
-
-                        <div class="data-tiles">
-                            <div class="data-tile--small wide" id="data-tile--power-avg">
-                                <z-stack data-key="kcalZStack">
-                                    <z-stack-item class="active">
-                                        <h2 class="data-tile-small--heading">Power Lap</h2>
-                                        <div class="data-tile-small--value-cont">
-                                            <power-lap id="power-lap-value"
-                                                       class="data-tile-small--value">--</power-lap>
-                                        </div>
-                                    </z-stack-item>
-                                    <z-stack-item>
-                                        <h2 class="data-tile-small--heading">Power Avg</h2>
-                                        <div class="data-tile-small--value-cont">
-                                            <power-avg id="power-avg-value"
-                                                       class="data-tile-small--value">--</power-avg>
-                                        </div>
-                                    </z-stack-item>
-                                    <z-stack-item>
-                                        <h2 class="data-tile-small--heading">Kcal</h2>
-                                        <div class="data-tile-small--value-cont">
-                                            <kcal-avg id="kcal-avg-value"
-                                                      class="data-tile-small--value">--</kcal-avg>
-                                        </div>
-                                    </z-stack-item>
-                                <z-stack>
-                            </div>
-
-                            <div class="data-tile" id="data-tile--power">
-                                <z-stack data-key="powerZStack">
-                                    <z-stack-item class="active">
-                                        <h2 class="data-tile--heading">Power</h2>
-                                        <div class="data-tile--value-cont">
-                                            <power-value id=power-value"
-                                                         class="data-tile--value"
-                                                         prop="db:power1s">--</power-value>
-                                        </div>
-                                    </z-stack-item>
-                                    <z-stack-item>
-                                        <h2 class="data-tile--heading">Power 3s</h2>
-                                        <div class="data-tile--value-cont">
-                                            <power-value id=power-value-3s"
-                                                         class="data-tile--value"
-                                                         prop="db:power3s">--</power-value>
-                                        </div>
-                                    </z-stack-item>
-                                </z-stack>
-                            </div>
-
-                            <div class="data-tile" id="data-tile--interval-time">
-                                <h2 class="data-tile--heading">Interval Time</h2>
-                                <div class="data-tile--value-cont">
-                                    <interval-time id="interval-time"
-                                                   class="data-tile--value">--:--</interval-time>
-                                </div>
-                            </div>
-                            <div class="data-tile" id="data-tile--heart-rate">
-                                <z-stack data-key="heartRateZStack">
-                                    <z-stack-item class="active">
-                                        <h2 class="data-tile--heading">Heart Rate</h2>
-                                        <div class="data-tile--value-cont">
-                                            <heart-rate-value id="heart-rate-value"
-                                                            class="data-tile--value">--</heart-rate-value>
-                                        </div>
-                                    </z-stack-item>
-                                    <z-stack-item>
-                                        <h2 class="data-tile--heading">Heart Rate Lap</h2>
-                                        <div class="data-tile--value-cont">
-                                            <heart-rate-lap-value id="heart-rate-lap-value"
-                                                              class="data-tile--value">--</heart-rate-lap-value>
-                                        </div>
-                                    </z-stack-item>
-                                    <z-stack-item>
-                                        <h2 class="data-tile--heading">Heart Rate Avg</h2>
-                                        <div class="data-tile--value-cont">
-                                            <heart-rate-avg-value id="heart-rate-avg-value"
-                                                                  class="data-tile--value">--</heart-rate-avg-value>
-                                        </div>
-                                    </z-stack-item>
-                                    <z-stack-item>
-                                        <h2 class="data-tile--heading">Heart Rate Max</h2>
-                                        <div class="data-tile--value-cont">
-                                            <heart-rate-max-value id="heart-rate-max-value"
-                                                              class="data-tile--value">--</heart-rate-max-value>
-                                        </div>
-                                    </z-stack-item>
-                                </z-stack>
-                            </div>
-
-                            <div class="data-tile--small wide" id="data-tile--speed">
-                                <h2 class="data-tile-small--heading">Speed</h2>
-                                    <speed-switch id="distance-value"
-                                                  class="data-tile-small--value">--</speed-switch>
-                            </div>
-                            <div class="data-tile--small wide" id="data-tile--slope">
-                                <h2 class="data-tile-small--heading">Slope</h2>
-                                <div class="data-tile-small--value-cont">
-                                    <slope-target id=slope-target-value"
-                                                  class="data-tile-small--value">--</slope-target>
-                                </div>
-                            </div>
-
-                            <div class="data-tile" id="data-tile--target">
-                                <z-stack data-key="powerTargetZStack">
-                                    <z-stack-item class="active">
-                                        <h2 class="data-tile--heading">Target</h2>
-                                        <div class="data-tile--value-cont">
-                                            <power-target
-                                                class="companion-main data-tile--value">
-                                                --
-                                            </power-target>
-                                        </div>
-                                    </z-stack-item>
-                                    <z-stack-item>
-                                        <h2 class="data-tile--heading">Target</h2>
-                                        <div class="data-tile--value-cont complex">
-                                            <power-target
-                                                class="data-tile--value active">
-                                                --
-                                            </power-target>
-                                            <power-target-ftp
-                                                id="power-target-ftp"
-                                                class="data-tile-target--value active">
-                                                --
-                                            </power-ftp-value>
-                                        </div>
-                                    </z-stack-item>
-                                </z-stack>
-                            </div>
-                            <div class="data-tile" id="data-tile--elapsed-time">
-                                <h2 class="data-tile--heading">Elapsed Time</h2>
-                                <div class="data-tile--value-cont">
-                                    <timer-time id="elapsed-time"
-                                                class="data-tile--value">--:--:--</timer-time>
-                                </div>
-                            </div>
-                            <div class="data-tile" id="data-tile--cadence">
-                                <z-stack data-key="cadenceZStack">
-                                    <z-stack-item class="active">
-                                        <h2 class="data-tile--heading">Cadence</h2>
-                                        <cadence-value id=cadence-value"
-                                                       class="data-tile--value">--</cadence-value>
-                                    </z-stack-item>
-                                    <z-stack-item>
-                                        <h2 class="data-tile--heading">Cadence Lap</h2>
-                                        <cadence-lap-value id=cadence-lap-value"
-                                                           class="data-tile--value">--</cadence-lap-value>
-                                    </z-stack-item>
-                                    <z-stack-item>
-                                        <h2 class="data-tile--heading">Cadence Avg</h2>
-                                        <cadence-avg-value id=cadence-avg-value"
-                                                           class="data-tile--value">--</cadence-avg-value>
-                                    </z-stack-item>
-                                    <z-stack-item>
-                                        <h2 class="data-tile--heading">Cadence Target</h2>
-                                        <cadence-group class="data-tile--value-cont complex">
-                                            <cadence-value id=cadence-value"
-                                                           class="data-tile--value">--</cadence-value>
-                                            <cadence-target id=cadence-target-value"
-                                                            class="data-tile-target--value active"></cadence-target>
-                                        </cadence-group>
-                                    </z-stack-item>
-                                </z-stack>
-                            </div>
-
-                            <div class="data-tile--small wide" id="data-tile--distance">
-                                <h2 class="data-tile-small--heading">Distance</h2>
-                                <div class="data-tile-small--value-cont">
-                                    <distance-value id="distance-value"
-                                                    class="data-tile-small--value">--</distance-value>
-
-                                </div>
-                            </div>
-
-                            <div class="data-tile--small" id="data-tile--smo2">
-                                <h2 class="data-tile-small--heading">SmO2</h2>
-                                <div class="data-tile-small--value-cont">
-                                    <smo2-value id="smo2-value"
-                                                class="data-tile-small--value">--</smo2-value>
-                                </div>
-                            </div>
-
-                            <div class="data-tile--small" id="data-tile--thb">
-                                <h2 class="data-tile-small--heading">Thb</h2>
-                                <div class="data-tile-small--value-cont">
-                                    <thb-value id="thb-value"
-                                               class="data-tile-small--value">--</thb-value>
-                                </div>
-                            </div>
-
-                            <div class="data-tile--small" id="data-tile--core-body-temperature">
-                                <h2 class="data-tile-small--heading">Core</h2>
-                                <div class="data-tile-small--value-cont">
-                                    <core-body-temperature-value
-                                        id="core-body-temperature-value"
-                                        class="data-tile-small--value">
-                                        --
-                                    </core-body-temperature-value>
-                                </div>
-                            </div>
-
-                            <div class="data-tile--small" id="data-tile--skin-temperature">
-                                <h2 class="data-tile-small--heading">Skin</h2>
-                                <div class="data-tile-small--value-cont">
-                                    <skin-temperature-value
-                                        id="skin-temperature-value"
-                                        class="data-tile-small--value">
-                                        --
-                                    </skin-temperature-value>
-                                </div>
-                            </div>
-
-                            <data-tile-switch-group class="data-tile--switch--group">
-                                <div class="data-tile--switch switch-item switch-0 active" index="0">
-                                    <div class="data-tile--switch--icon"></div>
-                                </div>
-                                <div class="data-tile--switch switch-item switch-1" index="1">
-                                    <div class="data-tile--switch--icon"></div>
-                                </div>
-                            </data-tile-switch-group>
-                        </div> <!-- end data-tiles -->
-
-                        <div id="graph-power" class="graph">
-                            <auto-start-counter class="">3</auto-start-counter>
-                            <!-- <z-stack data-key="graphZStack">
-                                 <z-stack-item class="active"> -->
-                                    <h4 class="graph--heading">Graph</h4>
-                                    <moxy-graph class="graph--cont">
-                                        <svg id="moxy-svg">
-                                            <polyline id="moxy-path-smo2" class="moxy--path" points=""/>
-                                            <polyline id="moxy-path-thb" class="moxy--path" points=""/>
-                                            <polyline id="moxy-path-hr" class="moxy--path" points=""/>
-                                            <polyline id="moxy-path-power" class="moxy--path" points=""/>
-                                        </svg>
-                                    </moxy-graph>
-                                    <!-- </z-stack-item>
-                                         <z-stack-item>
-                                         <h4 class="graph--heading">Power</h4>
-                                         <instant-power-graph class="graph--cont">
-                                         </instant-power-graph>
-                                         </z-stack-item>
-                                         </z-stack> -->
-                        </div>
-
-                        <div id="graph-workout" class="graph">
-                            <workout-name id="current-workout-name" class="graph--heading"></workout-name>
-                            <workout-graph class="workout--graph-cont" prop="workout" metric="ftp"></workout-graph>
-                        </div>
-
-                        <div id="targets">
-                            <div class="targets--cont">
-                                <div class="tab-btn-group">
-                                    <div id="mode-selector" class="mode-selector">
-                                        <tab-btn id="erg-mode-btn"
-                                                class="mode active"
-                                                prop="mode"
-                                                effect="mode-set"
-                                                param="erg">ERG</tab-btn>
-                                        <tab-btn id="resistance-mode-btn"
-                                                class="mode"
-                                                prop="mode"
-                                                effect="mode-set"
-                                                param="resistance">Resistance</tab-btn>
-                                        <tab-btn id="slope-mode-btn"
-                                                class="mode"
-                                                prop="mode"
-                                                effect="mode-set"
-                                                 param="sim">Slope</tab-btn>
-                                        <mode-lock-toggle>
-                                            <svg class="mode-lock--toggle--icon" width="24" height="24">
-                                                <use href="#icon--lock--open"/>
-                                            </svg>
-                                        </mode-lock-toggle>
-                                    </div> <!-- end mode selector -->
-                                </div> <!-- tab-btn-group -->
-
-                                <tab-group prop="mode">
-                                    <div id="erg-mode-controls" class="tab active mode-controls" tab="erg">
-                                        <power-target-control id="power-control-btn" class="number-btn">
-                                            <div class="number-input">
-                                                <button id="power-target-dec"
-                                                        class="number-input--dec number-input--btn btn">-</button>
-                                                <input id="power-target-input"
-                                                       class="number-input--value"
-                                                       type="number"
-                                                       value="0"
-                                                       autocomplete="off"/>
-                                                <button id="power-target-inc"
-                                                        class="number-input--inc number-input--btn btn">+</button>
+                            <!-- DATA PANEL -->
+                            <div class="watts-panel watts-data">
+                                <div class="watts-data--main">
+                                    <div class="watts-data--top">
+                                        <!-- power hero -->
+                                        <div class="watts-hero">
+                                            <div class="watts-hero--head">
+                                                <span class="watts-label">Power</span>
+                                                <power-zone-chip class="watts-zonechip">Z1 · Recovery</power-zone-chip>
                                             </div>
-                                        </power-target-control>
-                                    </div> <!-- end erg mode -->
-                                    <div id="resistance-mode-controls" class="tab mode-controls" tab="resistance">
-                                        <resistance-target-control id="resistance-control-btn" class="number-btn">
-                                            <div class="number-input">
-                                                <button id="resistance-target-dec"
-                                                        class="number-input--dec number-input--btn btn">-</button>
-                                                <input id="resistance-target-input"
-                                                       class="number-input--value input"
-                                                       type="number"
-                                                       value="0"
-                                                       autocomplete="off" />
-                                                <button id="resistance-target-inc"
-                                                        class="number-input--inc number-input--btn btn">+</button>
+                                            <div class="watts-hero--row">
+                                                <power-value id="power-value" prop="db:power1s" class="watts-hero--value">--</power-value>
+                                                <span class="watts-hero--unit">W</span>
+                                                <w-per-kg class="watts-hero--wkg">0.00 W/kg</w-per-kg>
                                             </div>
-                                        </resistance-target-control>
-                                    </div> <!-- end resistance mode -->
-                                    <div id="slope-mode-controls" class="tab mode-controls" tab="sim">
-                                        <slope-target-control id="slope-control-btn" class="number-btn">
-                                            <div class="number-input">
-                                                <button id="slope-target-dec"
-                                                        class="number-input--dec number-input--btn btn">-</button>
-                                                <input id="slope-target-input"
-                                                       class="number-input--value input"
-                                                       type="number"
-                                                       value="0"
-                                                       autocomplete="off" />
-                                                <button id="slope-target-inc"
-                                                        class="number-input--inc number-input--btn btn">+</button>
+                                        </div>
+                                        <!-- target -->
+                                        <div class="watts-target">
+                                            <div class="watts-label">Target</div>
+                                            <div class="watts-target--row">
+                                                <power-target class="watts-target--value">--</power-target>
+                                                <span class="watts-target--unit">W</span>
                                             </div>
-                                        </slope-target-control>
-                                    </div> <!-- end slope mode -->
-                                </tab-group>
-                            </div> <!-- end targets--cont -->
-                        </div> <!-- end targets -->
+                                            <target-info class="watts-target--info">--</target-info>
+                                            <target-adherence class="watts-adherence"></target-adherence>
+                                        </div>
+                                        <!-- power history -->
+                                        <power-history-graph class="watts-hist"></power-history-graph>
+                                    </div>
+
+                                    <!-- metric grid -->
+                                    <div class="watts-metrics">
+                                        <div class="watts-metric">
+                                            <div class="watts-metric--label">Heart Rate</div>
+                                            <div class="watts-metric--value">
+                                                <heart-rate-value class="watts-hr">--</heart-rate-value>
+                                                <span class="watts-metric--unit">bpm</span>
+                                            </div>
+                                            <metric-sparkline class="watts-metric--spark" prop="db:heartRate" color="#ff5470" min="90" max="180"></metric-sparkline>
+                                        </div>
+                                        <div class="watts-metric">
+                                            <div class="watts-metric--label">Cadence</div>
+                                            <div class="watts-metric--value">
+                                                <cadence-value>--</cadence-value>
+                                                <span class="watts-metric--unit">rpm</span>
+                                            </div>
+                                        </div>
+                                        <div class="watts-metric">
+                                            <div class="watts-metric--label">Interval Left</div>
+                                            <div class="watts-metric--value watts-accent-text">
+                                                <interval-time>--:--</interval-time>
+                                            </div>
+                                        </div>
+                                        <div class="watts-metric">
+                                            <div class="watts-metric--label">Elapsed</div>
+                                            <div class="watts-metric--value">
+                                                <timer-time format="mm:ss">--:--</timer-time>
+                                            </div>
+                                        </div>
+                                        <div class="watts-metric">
+                                            <div class="watts-metric--label">Power Lap</div>
+                                            <div class="watts-metric--value">
+                                                <zoned-value prop="db:powerLap">--</zoned-value>
+                                                <span class="watts-metric--unit">W</span>
+                                            </div>
+                                        </div>
+                                        <div class="watts-metric">
+                                            <div class="watts-metric--label">Speed</div>
+                                            <div class="watts-metric--value">
+                                                <speed-switch>--</speed-switch>
+                                                <span class="watts-metric--unit">km/h</span>
+                                            </div>
+                                        </div>
+                                        <div class="watts-metric">
+                                            <div class="watts-metric--label">Distance</div>
+                                            <div class="watts-metric--value">
+                                                <distance-value>--</distance-value>
+                                                <span class="watts-metric--unit">km</span>
+                                            </div>
+                                        </div>
+                                        <div class="watts-metric">
+                                            <div class="watts-metric--label">Time Left</div>
+                                            <div class="watts-metric--value">
+                                                <time-left>--:--</time-left>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- FTP gauge -->
+                                <ftp-gauge class="watts-gauge"></ftp-gauge>
+                            </div>
+
+                            <!-- WORKOUT PROFILE -->
+                            <div class="watts-panel watts-profile">
+                                <div class="watts-profile--head">
+                                    <span class="watts-label">Workout Profile</span>
+                                    <div class="watts-legend">
+                                        <span class="watts-legend--item"><span class="watts-legend--sw watts-legend--pow"></span>POWER</span>
+                                        <span class="watts-legend--item"><span class="watts-legend--sw watts-legend--hr"></span>HR</span>
+                                        <span class="watts-legend--item"><span class="watts-legend--sw watts-legend--cad"></span>CAD</span>
+                                    </div>
+                                </div>
+                                <div class="watts-profile--body">
+                                    <div class="watts-profile--axis watts-profile--axis-pow">
+                                        <span style="top:-6px;"><b>150%</b><i></i></span>
+                                        <span style="top:calc(33.3% - 6px);"><b>100%</b><i></i></span>
+                                        <span style="top:calc(66.6% - 6px);"><b>50%</b><i></i></span>
+                                        <span style="bottom:-2px;"><b>0%</b><i></i></span>
+                                    </div>
+                                    <div id="graph-workout" class="graph watts-profile--plot">
+                                        <auto-start-counter class="watts-autostart">3</auto-start-counter>
+                                        <workout-graph class="workout--graph-cont" prop="workout" metric="ftp"></workout-graph>
+                                    </div>
+                                    <div class="watts-profile--axis watts-profile--axis-r watts-profile--axis-hr">
+                                        <span style="top:-6px;">200</span>
+                                        <span style="top:calc(33.3% - 6px);">133</span>
+                                        <span style="top:calc(66.6% - 6px);">67</span>
+                                        <span style="bottom:-2px;">0</span>
+                                        <em class="watts-axis-unit">bpm</em>
+                                    </div>
+                                    <div class="watts-profile--axis watts-profile--axis-r watts-profile--axis-cad">
+                                        <span style="top:-6px;">120</span>
+                                        <span style="top:calc(33.3% - 6px);">80</span>
+                                        <span style="top:calc(66.6% - 6px);">40</span>
+                                        <span style="bottom:-2px;">0</span>
+                                        <em class="watts-axis-unit">rpm</em>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- CONTROL BAR -->
+                            <div class="watts-controlbar">
+                                <watch-control id="watch" class="watts-transport">
+                                    <div id="watch-back" class="watts-tbtn" title="Previous segment">
+                                        <svg class="watts-tbtn--icon" width="22" height="22"><use href="#icon--skip-previous-btn"></use></svg>
+                                    </div>
+                                    <div id="watch-start" class="watts-tbtn watts-tbtn--primary" title="Play">
+                                        <svg class="watts-tbtn--icon" width="22" height="22"><use href="#icon--play-btn"></use></svg>
+                                    </div>
+                                    <div id="watch-pause" class="watts-tbtn watts-tbtn--primary" title="Pause">
+                                        <svg class="watts-tbtn--icon" width="22" height="22"><use href="#icon--pause-btn"></use></svg>
+                                    </div>
+                                    <div id="watch-forward" class="watts-tbtn" title="Next segment">
+                                        <svg class="watts-tbtn--icon" width="22" height="22"><use href="#icon--skip-next-btn"></use></svg>
+                                    </div>
+                                    <div id="watch-stop" class="watts-tbtn watts-tbtn--stop" title="Stop">
+                                        <svg class="watts-tbtn--icon" width="22" height="22"><use href="#icon--stop-btn"></use></svg>
+                                    </div>
+                                    <div id="activity-save" class="watts-tbtn" title="Save activity">
+                                        <svg class="watts-tbtn--icon" width="22" height="22"><use href="#icon--file"></use></svg>
+                                    </div>
+                                </watch-control>
+
+                                <div class="watts-controlbar--div"></div>
+
+                                <div class="watts-erg-label">ERG</div>
+
+                                <power-target-control id="power-control-btn" class="watts-stepper">
+                                    <button id="power-target-dec" class="watts-stepper--btn">−</button>
+                                    <div class="watts-stepper--value-cont">
+                                        <input id="power-target-input"
+                                               class="watts-stepper--value"
+                                               type="number"
+                                               value="0"
+                                               autocomplete="off"/>
+                                        <span class="watts-stepper--unit">W</span>
+                                    </div>
+                                    <button id="power-target-inc" class="watts-stepper--btn watts-stepper--inc">+</button>
+                                </power-target-control>
+
+                                <mode-lock-toggle class="watts-lock">
+                                    <svg class="mode-lock--toggle--icon" width="22" height="22">
+                                        <use href="#icon--lock--open"/>
+                                    </svg>
+                                </mode-lock-toggle>
+                            </div>
+
+                        </div> <!-- end watts-home--inner -->
                 </div> <!-- end home-page-wrapper -->
             </div> <!-- end page-home -->
 
@@ -392,204 +238,37 @@
                         topic=":nav"
                     >Editor
                     </navigation-action>
-                    <navigation-action
-                        id="link--workouts-report"
-                        class="library--switch--heading"
-                        action="workouts:report"
-                        topic=":nav"
-                    >Ride report
-                    </navigation-action>
                 </div>
-                <workout-editor id="view--workouts-editor" class="sub-tab">
-                    <div class="editor-cont">
-                        <form action="">
-                            <div class="editor--meta">
-                                <div class="editor--form--group">
-                                    <label class="editor--label"
-                                           for="name">Name:</label>
-                                    <input class="editor--name editor--input"
-                                           name="name"
-                                           type="text" />
-                                </div>
-                                <div class="editor--form--group">
-                                    <label class="editor--label"
-                                           for="author">Author:</label>
-                                    <input class="editor--author editor--input"
-                                        name="author"
-                                        type="text" />
-                                </div>
-                                <div class="editor--form--group">
-                                    <label class="editor--label"
-                                           for="category">Category:</label>
-                                    <input class="editor--category editor--input"
-                                        name="category"
-                                        type="text" />
-                                </div>
-                                <div class="editor--form--group">
-                                    <label class="editor--label editor--label--textarea"
-                                           for="description">Description:</label>
-                                    <textarea class="editor--description editor--input"
-                                            name="description"
-                                            type="text"
-                                            rows="4"></textarea>
-                                </div>
-                            </div>
-                            <div class="editor--table">
-                                <h3 class="editor--header">Intervals:</h3>
-                                <div class="editor--head">
-                                    <div class="editor--row">
-                                        <div class="editor--th"></div>
-                                        <div class="editor--th">Time</div>
-                                        <div class="editor--th">Duration</div>
-                                        <div class="editor--th">Power</div>
-                                        <div class="editor--th">Ramp</div>
-                                        <div class="editor--th">Slope</div>
-                                        <div class="editor--th">Cadence</div>
-                                    </div>
-                                </div>
-                                <div class="editor--body"></div>
-                            </div>
-                            <div class="editor--controls">
-                                <svg xmlns="http://www.w3.org/2000/svg"
-                                    class="editor--add editor--icon"
-                                    viewBox="0 0 24 24"
-                                    height="24px" width="24px" fill="#FFFFFF">
-                                    <path d="M0 0h24v24H0V0z" fill="none"/>
-                                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                                </svg>
-                                <svg xmlns="http://www.w3.org/2000/svg"
-                                    class="editor--remove editor--icon"
-                                    height="24px"
-                                    width="24px"
-                                    viewBox="0 0 24 24" fill="#FFFFFF">
-                                    <path d="M0 0h24v24H0V0z" fill="none"/>
-                                    <path d="M19 13H5v-2h14v2z"/>
-                                </svg>
-                                <svg xmlns="http://www.w3.org/2000/svg"
-                                    class="editor--save editor--icon"
-                                    height="24px"
-                                    width="24px"
-                                    viewBox="0 0 24 24" fill="#FFFFFF">
-                                    <path d="M0 0h24v24H0V0z" fill="none"/>
-                                    <path d="M17 3H3v18h18V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
-                                </svg>
-                                <svg xmlns="http://www.w3.org/2000/svg"
-                                    class="editor--download editor--icon"
-                                    height="24px"
-                                    width="24px"
-                                    viewBox="0 0 24 24" fill="#FFFFFF">
-                                    <path d="M0 0h24v24H0V0z" fill="none"/>
-                                    <path d="M19 12v7H5v-7H3v9h18v-9h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/>
-                                </svg>
-                            </div> <!-- end editor--controls -->
-                        </form>
-                    </div> <!-- end editor--cont -->
-                </workout-editor>
-
-                <!-- ride-report -->
-                <div id="view--workouts-report" class="ride-report sub-tab">
-
-                    <power-in-zone id="power-in-zone">
-                        <div class="power--zone--item">
-                            <div class="power--zone-value">0</div>
-                            <div class="power--zone-bar zone-one"></div>
-                        </div>
-                        <div class="power--zone power--zone--item">
-                            <div class="power--zone-value">0</div>
-                            <div class="power--zone-bar  zone-two"></div>
-                        </div>
-                        <div class="power--zone power--zone--item">
-                            <div class="power--zone-value">0</div>
-                            <div class="power--zone-bar zone-three"></div>
-                        </div>
-                        <div class="power--zone power--zone--item">
-                            <div class="power--zone-value">0</div>
-                            <div class="power--zone-bar zone-four"></div>
-                        </div>
-                        <div class="power--zone power--zone--item">
-                            <div class="power--zone-value">0</div>
-                            <div class="power--zone-bar  zone-five"></div>
-                        </div>
-                        <div class="power--zone power--zone--item">
-                            <div class="power--zone-value">0</div>
-                            <div class="power--zone-bar zone-six"></div>
-                        </div>
-                        <div class="power--zone power--zone--item">
-                            <div class="power--zone-value">0</div>
-                            <div class="power--zone-bar zone-seven"></div>
-                        </div>
-                        <div class="power--unit power--zone--item chrome-bg">%</div>
-                    </power-in-zone>
-
-                    <laps-list>
-                        <div class="laps--header">
-                            <div class="lap--header--item"></div>
-                            <div class="lap--header--item">Time</div>
-                            <div class="lap--header--item">Power</div>
-                            <div class="lap--header--item">Cadence</div>
-                            <div class="lap--header--item">HR</div>
-                            <div class="lap--header--item">SmO2</div>
-                            <div class="lap--header--item">THb</div>
-                            <div class="lap--header--item">Core</div>
-                            <div class="lap--header--item">Skin</div>
-                        </div>
-                        <div class="laps--cont"></div>
-                    </laps-list>
-                </div> <!-- end ride-report -->
+                <!-- graphical workout designer (the Editor sub-tab) -->
+                <workout-designer id="view--workouts-editor" class="sub-tab"></workout-designer>
 
                 <!-- workout-list -->
                 <div id="view--workouts-workouts" class="workout-list sub-tab active">
-                    <div class="list--sub-section">
-                        <div class="list--row--outer">
-                            <div class="list--row--inner list--heading--cont control">
-                                <h2 class="list--sub-heading">Planned</h2>
-                                <div class="planned--actions">
-                                    <view-action
-                                        class="activity--action"
-                                        action=":intervals:wod"
-                                        topic=":planned">
-                                        <svg class="activity--icon intervals--icon">
-                                            <use href="#icon--intervals" />
-                                        </svg>
-                                        <div class="connection-icon-switch--indicator none intervals"></div>
-                                    </view-action>
-                                    <!-- <view-action
-                                         class="activity--action"
-                                         action="trainingPeaks::wod"
-                                         topic="planned">
-                                         <div class="tp-logo--icon">TP</div>
-                                         <div class="connection-icon-switch--indicator none tp"></div>
-                                         </view-action> -->
-                                </div> <!-- end planned--actions -->
-                            </div> <!-- end list--heading--cont -->
-                        </div>
-                        <planned-list class="workouts--list planned--list">
-                        </planned-list>
-                    </div> <!-- list--sub-section -->
 
-                    <!-- activites -->
-                    <div class="list--sub-section">
-                        <div class="list--row--outer">
-                            <div class="list--row--inner list--heading--cont">
-                                <h2 class="list--sub-heading">Activities</h2>
-                            </div>
+                    <!-- my workouts -->
+                    <details class="list--sub-section list--collapsible" open>
+                        <summary class="list--sub-heading">My workouts</summary>
+                        <div class="user-workouts">
+                            <workout-list class="workout-list list" filter="user" prop="workouts" metric="ftp">
+                            </workout-list>
                         </div>
+                    </details>
+
+                    <!-- default workouts (read-only) -->
+                    <details class="list--sub-section list--collapsible" open>
+                        <summary class="list--sub-heading">Default workouts</summary>
+                        <div class="buildin-workouts">
+                            <workout-list class="workout-list list" filter="default" prop="workouts" metric="ftp">
+                            </workout-list>
+                        </div>
+                    </details>
+
+                    <!-- activities -->
+                    <details class="list--sub-section list--collapsible" open>
+                        <summary class="list--sub-heading">Activities</summary>
                         <activity-list class="activity--list">
                         </activity-list>
-                    </div> <!-- end activities -->
-
-                    <div class="list--sub-section">
-                        <div class="list--row--outer">
-                            <div class="list--row--inner list--heading--cont">
-                                <h2 class="list--sub-heading">Library</h2>
-                            </div>
-                        </div>
-                        <div class="buildin-workouts">
-                            <workout-list id="workout-list" class="workout-list list" prop="workouts" metric="ftp">
-                            </workout-list>
-                        </div> <!-- end list--heading--cont -->
-                    </div>  <!-- list--sub-section -->
-
+                    </details>
 
                     <div class="workout-loader">
                         <h2 class="page--heading">Load workout:</h2>
@@ -1493,90 +1172,68 @@
             </page-group>
             </navigation-stack>
 
-            <div class="fixed-bottom">
-                <!-- <div class="fixed-bottom--cont"> -->
-                <workout-name id="workout-name">Free ride</workout-name>
-                <watch-control id="watch" class="watch">
-                    <div id="watch-start" class="control--btn">
-                        <svg class="control--btn--icon" width="24" height="24">
-                            <use href="#icon--play-btn" />
+            <!-- Global bottom nav. The transport controls (watch-control) now live
+                 in the Home control bar per the WATTS design; only the nav remains
+                 fixed and visible on every screen. -->
+            <header class="watts-topnav">
+                <div class="watts-topnav--inner">
+                    <div class="watts-brand">
+                        <svg class="watts-bolt" viewBox="0 0 24 24" width="20" height="20">
+                            <path d="M13 2 L4 13 h6 l-1 9 l9-12 h-6 z"></path>
                         </svg>
+                        <span class="watts-wordmark">WATTS</span>
+                        <span class="watts-topbar--div"></span>
+                        <workout-name id="current-workout-name" class="watts-workout-name">Free ride</workout-name>
+                        <workout-category class="watts-cat"></workout-category>
                     </div>
 
-                    <div id="watch-pause" class="control--btn" >
-                        <svg class="control--btn--icon" width="24" height="24">
-                            <use href="#icon--pause-btn" />
-                        </svg>
-                    </div>
+                    <div id="menu" class="menu">
+                        <div class="page-btn-group menu--row">
+                            <page-btn id="settings-tab-btn"
+                                      class="menu--btn"
+                                      prop="page"
+                                      effect="page-set"
+                                      param="settings">
+                                <svg class="menu--btn--icon" width="24" height="24">
+                                    <use href="#icon--settings"></use>
+                                </svg>
+                                <div class="menu--btn--label">Settings</div>
+                            </page-btn>
+                            <page-btn id="home-tab-btn"
+                                      class="menu--btn active"
+                                      prop="page"
+                                      effect="page-set"
+                                      param="home">
+                                <svg class="menu--btn--icon" width="24" height="24">
+                                    <use href="#icon--home"></use>
+                                </svg>
+                                <div class="menu--btn--label">Home</div>
+                            </page-btn>
+                            <page-btn id="workouts-tab-btn"
+                                      class="menu--btn"
+                                      prop="page"
+                                      effect="page-set"
+                                      param="workouts">
+                                <svg class="menu--btn--icon" width="24" height="24">
+                                    <use href="#icon--list"></use>
+                                </svg>
+                                <div class="menu--btn--label">Workouts</div>
+                            </page-btn>
+                        </div> <!-- end page-btn-group -->
+                    </div> <!-- end menu -->
 
-                    <div id="watch-back" class="control--btn">
-                        <svg class="control--btn--icon" width="24" height="24">
-                            <use href="#icon--skip-previous-btn"></use>
-                        </svg>
+                    <div class="watts-conn">
+                        <connection-switch for="ble:controllable" id="switch-controllable" class="watts-pill">
+                            <span class="connection-switch--indicator watts-pill--dot off"></span>
+                            <span class="watts-pill--label"><data-view prop="ble:controllable:name">Controllable</data-view></span>
+                        </connection-switch>
+                        <connection-switch for="ble:heartRateMonitor" id="switch-hrm" class="watts-pill">
+                            <span class="connection-switch--indicator watts-pill--dot off"></span>
+                            <span class="watts-pill--label"><data-view prop="ble:heartRateMonitor:name">Heart Rate</data-view></span>
+                        </connection-switch>
                     </div>
-
-                    <div id="watch-lap" class="control--btn">
-                        <svg class="control--btn--icon" width="24" height="24">
-                            <use href="#icon--watch-btn"></use>
-                        </svg>
-                    </div>
-
-                    <div id="watch-stop" class="control--btn">
-                        <svg class="control--btn--icon" width="24" height="24">
-                            <use href="#icon--stop-btn"></use>
-                        </svg>
-                    </div>
-
-                    <div id="activity-save" class="control--btn">
-                        <svg class="control--btn--icon" width="24" height="24">
-                            <use href="#icon--file"></use>
-                        </svg>
-                    </div>
-                </watch-control> <!-- end controls -->
-                    <!-- </div>  -->
-
-                <div id="menu" class="menu">
-                    <div class="page-btn-group menu--row">
-                        <!-- <navigation-action
-                             id="link--workouts-report"
-                             class="library--switch--heading"
-                             action="workouts:report"
-                             topic=":nav"
-                             >Ride report
-                             </navigation-action> -->
-                        <page-btn id="settings-tab-btn"
-                                  class="menu--btn"
-                                  prop="page"
-                                  effect="page-set"
-                                  param="settings">
-                            <svg class="menu--btn--icon" width="24" height="24">
-                                <use href="#icon--settings"></use>
-                            </svg>
-                            <div class="menu--btn--label">Settings</div>
-                        </page-btn>
-                        <page-btn id="home-tab-btn"
-                                  class="menu--btn active"
-                                  prop="page"
-                                  effect="page-set"
-                                  param="home">
-                            <svg class="menu--btn--icon" width="24" height="24">
-                                <use href="#icon--home"></use>
-                            </svg>
-                            <div class="menu--btn--label">Home</div>
-                        </page-btn>
-                        <page-btn id="workouts-tab-btn"
-                                  class="menu--btn"
-                                  prop="page"
-                                  effect="page-set"
-                                  param="workouts">
-                            <svg class="menu--btn--icon" width="24" height="24">
-                                <use href="#icon--list"></use>
-                            </svg>
-                            <div class="menu--btn--label">Workouts</div>
-                        </page-btn>
-                    </div> <!-- end page-btn-group -->
-                </div> <!-- end menu -->
-            </div> <!-- end fixed-bottom -->
+                </div> <!-- end watts-topnav--inner -->
+            </header> <!-- end watts-topnav -->
         </div> <!-- end wrapper -->
         <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
 
@@ -1620,6 +1277,10 @@
             <symbol id="icon--skip-previous-btn" viewBox="0 0 24 24">
                 <path d="M0 0h24v24H0V0z" fill="none"/>
                 <path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z"/>
+            </symbol>
+            <symbol id="icon--skip-next-btn" viewBox="0 0 24 24">
+                <path d="M0 0h24v24H0V0z" fill="none"/>
+                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
             </symbol>
             <symbol id="icon--stop-btn" viewBox="0 0 24 24">
                 <path d="M0 0h24v24H0V0z" fill="none"/>

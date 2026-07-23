@@ -25,6 +25,15 @@ function workoutTemplate(workout) {
     if(workout.meta.distance) {
         duration = `${(workout.meta.distance / 1000).toFixed(2)} km`;
     }
+    // Default (built-in) workouts are read-only: their only menu action is
+    // "Duplicate" (copy into My workouts). The user's own workouts can be edited
+    // in place, duplicated, or deleted. All of these live in the 3-dot menu.
+    const isDefault = !!workout.isDefault;
+    const menuItems = isDefault
+        ? `<button class="workout--menu-item" data-action="duplicate" title="Copy into My workouts and open in the designer">Duplicate</button>`
+        : `<button class="workout--menu-item" data-action="edit" title="Edit this workout in the designer">Edit</button>
+                                <button class="workout--menu-item" data-action="duplicate" title="Save a copy into My workouts">Duplicate</button>
+                                <button class="workout--menu-item workout--menu-item--danger" data-action="delete" title="Delete this workout">Delete</button>`;
     return `<workout-item class='workout cf' id="${workout.id}" metric="ftp">
                 <div class="workout--info">
                     <div class="workout--short-info">
@@ -34,16 +43,15 @@ function workoutTemplate(workout) {
                             <div class="workout--duration">${duration}</div>
                             <div class="workout--select" id="btn${workout.id}">${workout.selected ? radioOn : radioOff}
                             </div>
-                            <div class="workout--options">${options}</div>
+                            <div class="workout--options">${options}
+                                <div class="workout--menu" hidden>${menuItems}</div>
+                            </div>
                         </div>
                     </div>
                     <div class="workout--full-info">
                         <div class="workout-list--graph-cont">${workout.graph}</div>
                         <div class="workout--description">${workout.meta.description}</div>
                     </div>
-                </div>
-                <div class="workout--actions">
-                    <span class="workout--remove">Delete</span>
                 </div>
             </workout-item>`;
 }
@@ -62,6 +70,9 @@ class WorkoutList extends HTMLElement {
         const self = this;
         this.abortController = new AbortController();
         this.signal = { signal: self.abortController.signal };
+
+        // 'default' -> only built-in workouts, 'user' -> only the user's own.
+        this.filter = this.getAttribute('filter') || 'user';
 
         xf.sub(`db:workouts`, this.onWorkouts.bind(this), this.signal);
         xf.sub('db:workout',  this.onWorkout.bind(this), this.signal); // ?
@@ -124,8 +135,23 @@ class WorkoutList extends HTMLElement {
             return acc + workoutTemplate(workout);
         }, '');
     }
+    forFilter(state) {
+        return (state ?? []).filter((w) =>
+            this.filter === 'default' ? w.isDefault : !w.isDefault);
+    }
+    emptyHtml() {
+        const msg = this.filter === 'default'
+            ? `No built-in workouts found.`
+            : `You have no saved workouts yet. Copy a default workout below, upload a .zwo/.fit, or build one in the Editor.`;
+        return `<div class="workout--empty">${msg}</div>`;
+    }
     render() {
-        this.innerHTML = this.stateToHtml(this.state, this.ftp, this.workout);
+        const items = this.forFilter(this.state);
+        if(empty(items)) {
+            this.innerHTML = this.emptyHtml();
+            return;
+        }
+        this.innerHTML = this.stateToHtml(items, this.ftp, this.workout);
     }
 }
 
@@ -137,7 +163,7 @@ class WorkoutListItem extends HTMLElement {
         this.state = '';
         this.isExpanded = false;
         this.isSelected = false;
-        this.optionsActive = false;
+        this.menuOpen = false;
     }
     connectedCallback() {
         const self = this;
@@ -146,7 +172,7 @@ class WorkoutListItem extends HTMLElement {
         this.description = this.querySelector('.workout--full-info');
         this.selectBtn = this.querySelector('.workout--select');
         this.optionsBtn = this.querySelector('.workout--options');
-        this.removeBtn = this.querySelector('.workout--remove');
+        this.menu = this.querySelector('.workout--menu');
         this.indicator = this.selectBtn;
         this.id = this.getAttribute('id');
 
@@ -166,10 +192,11 @@ class WorkoutListItem extends HTMLElement {
 
         xf.sub('db:workout', this.onWorkout.bind(this), this.signal);
         this.summary.addEventListener('pointerup', this.toggleExpand.bind(this), this.signal);
-        this.optionsBtn.addEventListener('pointerup', this.toggleOptions.bind(this), this.signal);
+        this.optionsBtn.addEventListener('pointerup', this.toggleMenu.bind(this), this.signal);
+        this.menu.addEventListener('pointerup', this.onMenuItem.bind(this), this.signal);
         this.selectBtn.addEventListener('pointerup', this.onRadio.bind(this), this.signal);
-
-        this.removeBtn.addEventListener('pointerup', this.onRemove.bind(this), this.signal);
+        // clicking anywhere outside an open menu closes it.
+        document.addEventListener('pointerup', this.onDocPointerUp.bind(this), this.signal);
 
         this.addEventListener('mouseover', this.onHover.bind(this), this.signal);
         this.addEventListener('mouseout', this.onMouseOut.bind(this), this.signal);
@@ -180,7 +207,10 @@ class WorkoutListItem extends HTMLElement {
         this.abortController.abort();
     }
     toggleExpand(e) {
-        if(e.target.classList.contains('workout--options')) {
+        // clicks on the 3-dot menu (icon, button, or the open menu itself) must
+        // not toggle the graph. closest() catches the inner <svg>/<use> targets
+        // that the old classList check missed.
+        if(e.target.closest('.workout--options')) {
             return;
         }
         if(this.isExpanded) {
@@ -215,22 +245,77 @@ class WorkoutListItem extends HTMLElement {
         this.indicator.innerHTML = radioOff;
         this.isSelected = false;
     }
-    toggleOptions() {
-        if(this.optionsActive) {
-            this.hideOptions();
+    toggleMenu(e) {
+        // stop the summary's pointerup from also toggling the graph, and stop
+        // the document listener from immediately closing what we just opened.
+        e.stopPropagation();
+        if(this.menuOpen) {
+            this.closeMenu();
         } else {
-            this.showOptions();
+            this.openMenu();
         }
     }
-    showOptions() {
-        this.infoCont.classList.remove('options-hide');
-        this.infoCont.classList.add('options-show');
-        this.optionsActive = true;
+    openMenu() {
+        // only one menu open at a time across the list; also drop any stale
+        // row elevation so this row's dropdown sits above its neighbours.
+        document.querySelectorAll('.workout--menu:not([hidden])')
+            .forEach((m) => { m.hidden = true; });
+        document.querySelectorAll('.workout--info.menu-open')
+            .forEach((el) => el.classList.remove('menu-open'));
+        this.menu.hidden = false;
+        this.infoCont.classList.add('menu-open');
+        this.menuOpen = true;
     }
-    hideOptions() {
-        this.infoCont.classList.remove('options-show');
-        this.infoCont.classList.add('options-hide');
-        this.optionsActive = false;
+    closeMenu() {
+        this.menu.hidden = true;
+        this.infoCont.classList.remove('menu-open');
+        this.menuOpen = false;
+    }
+    onDocPointerUp(e) {
+        if(!this.menuOpen) return;
+        if(this.optionsBtn.contains(e.target)) return; // toggleMenu handles this
+        this.closeMenu();
+    }
+    onMenuItem(e) {
+        const item = e.target.closest('.workout--menu-item');
+        if(!item) return;
+        e.stopPropagation();
+        this.closeMenu();
+        const action = item.dataset.action;
+        if(action === 'edit') {
+            xf.dispatch('ui:workout:edit', this.id);
+        } else if(action === 'duplicate') {
+            xf.dispatch('ui:workout:duplicate', this.id);
+        } else if(action === 'delete') {
+            this.confirmDelete();
+        }
+    }
+    // Deleting a user workout is destructive and can't be undone, so confirm it.
+    confirmDelete() {
+        const name = (this.querySelector('.workout--name')?.textContent ?? '').trim();
+        const backdrop = document.createElement('div');
+        backdrop.className = 'wl-modal-backdrop';
+        backdrop.innerHTML = `
+            <div class="wl-modal" role="dialog" aria-modal="true">
+                <div class="wl-modal-head">Delete workout</div>
+                <div class="wl-modal-body">Delete “<span class="wl-modal-name"></span>”? This can’t be undone.</div>
+                <div class="wl-modal-foot">
+                    <button class="wl-cancel btn">Cancel</button>
+                    <button class="wl-confirm btn btn--danger">Delete</button>
+                </div>
+            </div>`;
+        // set via textContent so a workout name can never inject markup.
+        backdrop.querySelector('.wl-modal-name').textContent = name || 'this workout';
+        const close = () => backdrop.remove();
+        backdrop.addEventListener('pointerup', (ev) => {
+            ev.stopPropagation();
+            if(ev.target === backdrop || ev.target.closest('.wl-cancel')) { close(); return; }
+            if(ev.target.closest('.wl-confirm')) {
+                xf.dispatch('ui:workout:remove', this.id);
+                close();
+            }
+        });
+        document.body.appendChild(backdrop);
     }
     onWorkout(workout) {
         this.workout = workout;
@@ -239,10 +324,6 @@ class WorkoutListItem extends HTMLElement {
     onRadio(e) {
         e.stopPropagation();
         xf.dispatch('ui:workout:select', this.id);
-    }
-    onRemove(e) {
-        console.log(`:ui :workout :remove :id '${this.id}'`);
-        xf.dispatch('ui:workout:remove', this.id);
     }
     onUpdate(value) {
         if(!equals(value, this.state)) {

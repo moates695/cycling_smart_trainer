@@ -80,6 +80,8 @@ class Watch {
         xf.sub('ui:watchResume',  e => { self.resume();         });
         xf.sub('ui:watchLap',     e => { self.lap();            });
         xf.sub('ui:watchBack',    e => { self.back();           });
+        xf.sub('ui:watchForward', e => { self.forward();        });
+        xf.sub('ui:watchGoto',  pos => { self.goto(pos?.intervalIndex, pos?.stepIndex, pos?.stepElapsed); });
         xf.sub('ui:watchStop',    e => {
             const stop = confirm('Confirm Stop?');
             if(stop) {
@@ -347,22 +349,69 @@ class Watch {
         const self = this;
 
         if(self.isWorkoutStarted()) {
-            let i             = self.intervalIndex;
-            let s             = self.stepIndex;
-            let intervals     = self.intervals;
-            let lessIntervals = (i - 1) >= 0;
+            const i = self.intervalIndex;
 
-            if(lessIntervals) {
-                i -= 1;
-                s  = 0;
+            // Media-player style "prev": if we're more than 5s into the current
+            // interval, restart the current interval; otherwise (within the
+            // first 5s) jump to the start of the previous interval.
+            const elapsedInInterval = (self.lapDuration ?? 0) - (self.lapTime ?? 0);
+            const withinStart       = elapsedInInterval <= 5;
 
-                self.nextInterval(intervals, i, s);
-                self.nextStep(intervals, i, s);
+            let target = i;
+            if(withinStart && (i - 1) >= 0) {
+                target = i - 1;
             }
+
+            self.goto(target, 0, 0);
         } else {
             xf.dispatch('watch:lap');
             xf.dispatch('watch:lapTime', 0);
         }
+    }
+    forward() {
+        const self = this;
+
+        if(self.isWorkoutStarted()) {
+            let i             = self.intervalIndex;
+            let intervals     = self.intervals;
+            let moreIntervals = (i + 1) <= (intervals.length - 1);
+
+            if(moreIntervals) {
+                i += 1;
+
+                self.nextInterval(intervals, i, 0);
+                self.nextStep(intervals, i, 0);
+            }
+        }
+    }
+    // Seek to an exact point in the workout (used by dragging the progress
+    // handle). stepElapsed lets the drop land anywhere inside a step, not just
+    // snap to its leading edge.
+    goto(intervalIndex, stepIndex = 0, stepElapsed = 0) {
+        const self      = this;
+        const intervals = self.intervals;
+
+        if(!self.isWorkoutStarted()) return;
+        if(!exists(intervals) || !exists(intervals[intervalIndex])) return;
+
+        const steps = intervals[intervalIndex].steps;
+        const s     = Math.max(0, Math.min(steps.length - 1, stepIndex ?? 0));
+
+        self.nextInterval(intervals, intervalIndex, s);
+        self.nextStep(intervals, intervalIndex, s);
+
+        // nextInterval/nextStep reset lap/step time to their full durations.
+        // Correct them for the exact drop point: how much of this step is left,
+        // plus the remaining steps in the interval.
+        const stepDuration  = steps[s].duration ?? 0;
+        const elapsedInStep = Math.max(0, Math.min(stepDuration, stepElapsed ?? 0));
+        const stepRemaining = stepDuration - elapsedInStep;
+
+        let lapTime = stepRemaining;
+        for(let k = s + 1; k < steps.length; k += 1) lapTime += steps[k].duration ?? 0;
+
+        xf.dispatch('watch:stepTime', stepRemaining);
+        xf.dispatch('watch:lapTime',  lapTime);
     }
 
     isDurationStep(intervals, intervalIndex, stepIndex) {

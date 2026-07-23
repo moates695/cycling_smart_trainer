@@ -1,6 +1,7 @@
 import { xf, exists, existance, equals, clamp, debounce, toFixed  } from '../functions.js';
 import { formatTime, translate } from '../utils.js';
 import { models } from '../models/models.js';
+import { zoneClassByPct } from './watts.js';
 import { g } from './graph.js';
 
 
@@ -22,26 +23,52 @@ function intervalToWidth(intervalDuration, totalDuration, totalWidth) {
 }
 
 function intervalsToMaxPower(intervals, ftp) {
-    return intervals.reduce((highest, interval) => {
+    // Scale the plot to the workout's own peak power (not a fixed 160%-FTP
+    // ceiling). powerToHeight fills to 90% of the plot, so the tallest block
+    // sits slightly below the top — "slightly higher than the loaded workout".
+    const peak = intervals.reduce((highest, interval) => {
         interval.steps.forEach((step) => {
             const power = models.ftp.toAbsolute(step.power, ftp);
             if(power > highest) highest = power;
         });
         return highest;
-    }, ftp * 1.6);
+    }, 0);
+    return peak > 0 ? peak : (ftp * 1.5);
 }
 
-function Interval(acc, interval, width, ftp, powerMax, viewPort) {
+function Interval(acc, interval, width, ftp, powerMax, viewPort, intervalIndex = 0) {
     const stepsLength = interval.steps.length;
 
-    return acc + interval.steps.reduce((a, step) => {
+    // Persistent per-interval labels: peak watts above the block, total time at
+    // its base. Shown on every interval wide enough to read without clutter
+    // (was previously limited to work blocks, which hid the labels on recovery
+    // and on workouts with narrower intervals).
+    const peakPower = interval.steps.reduce(
+        (m, step) => Math.max(m, models.ftp.toAbsolute(step.power, ftp) ?? 0), 0);
+    const wideEnough = width >= 12;  // anything wider than a sliver gets labels
+    const narrow     = width < 40;   // too tight for horizontal text → go vertical
+    // Drop the leading zero from the minutes/hours (e.g. "02:00" → "2:00",
+    // "00:30" → "0:30") — local to the profile label, formatTime is untouched.
+    const durationLabel = exists(interval.duration)
+        ? formatTime({value: interval.duration, format: 'mm:ss'}).replace(/^0/, '') : '';
+    const labels = wideEnough
+        ? `<div class="graph--bar-watt">${Math.round(peakPower)}</div>` +
+          `<div class="graph--bar-dur">${durationLabel}</div>`
+        : '';
+    const groupClass = `graph--bar-group${narrow ? ' is-narrow' : ''}`;
+
+    return acc + interval.steps.reduce((a, step, stepIndex) => {
         const power    = models.ftp.toAbsolute(step.power, ftp) ?? 0;
         const cadence  = step.cadence;
         const slope    = step.slope;
         const duration = step.duration;
         const width    = 100 / stepsLength;
         const height   = powerToHeight(power, powerMax, viewPort);
-        const zone     = (models.ftp.powerToZone(power, ftp)).name;
+        // Colour by the WATTS Coggan boundaries (wattsZones), shared with the
+        // FTP gauge / zone chip / power-history gradient, so a bar's colour
+        // matches the rest of the home screen (top/purple zone starts at
+        // >150% FTP, not 120% as in the legacy models.ftp zone model).
+        const zone     = zoneClassByPct((power / (ftp || 200)) * 100);
         const infoTime = formatTime({value: duration, format: 'mm:ss'});
 
         const powerAttr    = exists(power)    ? `power="${power}"` : '';
@@ -50,8 +77,8 @@ function Interval(acc, interval, width, ftp, powerMax, viewPort) {
         const durationAttr = exists(duration) ? `duration="${infoTime}"` : '';
 
         return a +
-            `<div class="graph--bar zone-${zone}" style="height: ${height}px; width: ${width}%" ${powerAttr} ${cadenceAttr} ${slopeAttr} ${durationAttr}></div>`;
-    }, `<div class="graph--bar-group" style="width: ${width}px;">`) + `</div>`;
+            `<div class="graph--bar zone-${zone}" style="height: ${height}px; width: ${width}%" data-step="${stepIndex}" ${powerAttr} ${cadenceAttr} ${slopeAttr} ${durationAttr}></div>`;
+    }, `<div class="${groupClass}" data-interval="${intervalIndex}" style="width: ${width}px;">${labels}`) + `</div>`;
 }
 
 function intervalsToGraph(workout, ftp, viewPort) {
@@ -60,15 +87,15 @@ function intervalsToGraph(workout, ftp, viewPort) {
     const totalDuration = workout.meta.duration;
     const maxPower      = intervalsToMaxPower(intervals, ftp);
 
-    return intervals.reduce((acc, interval) => {
+    return intervals.reduce((acc, interval, intervalIndex) => {
         let width = 1;
 
         if(exists(interval.duration)) {
             width = intervalToWidth(interval.duration, totalDuration, totalWidth);
-            return Interval(acc, interval, width, ftp, maxPower, viewPort);
+            return Interval(acc, interval, width, ftp, maxPower, viewPort, intervalIndex);
         }
 
-        return '';
+        return acc;
     }, '<div class="graph--info--cont"></div>');
 }
 
@@ -134,9 +161,17 @@ class WorkoutGraph extends HTMLElement {
         xf.sub('db:page', this.onPage.bind(this), this.signal);
         xf.sub('db:lapTime', this.onLapTime.bind(this), this.signal);
         xf.sub('db:workoutStatus', this.onWorkoutStatus.bind(this), this.signal);
+        xf.sub('db:lock', this.onLock.bind(this), this.signal);
 
         this.addEventListener('mouseover', this.onHover.bind(this), this.signal);
         this.addEventListener('mouseout', this.onMouseOut.bind(this), this.signal);
+
+        // Scrub: drag the progress handle to seek (only when unlocked).
+        this.lock = false;
+        this.dragging = false;
+        this.onScrubMove = this.onScrubMove.bind(this);
+        this.onScrubEnd  = this.onScrubEnd.bind(this);
+        this.addEventListener('pointerdown', this.onScrubStart.bind(this), this.signal);
         // window.addEventListener('resize', this.debounced.onWindowResize.bind(this), this.signal);
         window.addEventListener('resize', this.onWindowResize.bind(this), this.signal);
     }
@@ -264,9 +299,103 @@ class WorkoutGraph extends HTMLElement {
 
         $dom.progress.style.width = `${left + (rect.width * lapPercentageComplete)}px`;
     }
+    onLock(lock) {
+        this.lock = lock;
+        this.updateLockState();
+    }
+    updateLockState() {
+        // Handle is only grabbable when the controls are unlocked.
+        if(exists(this.dom?.handle)) {
+            this.dom.handle.classList.toggle('is-locked', !!this.lock);
+        }
+    }
+    // Rewrite the fixed % axis to reflect the workout's own power range, showing
+    // both the %-of-FTP tick and the absolute watts it corresponds to.
+    updateAxis(powerMax, ftp) {
+        const axis = document.querySelector('.watts-profile--axis-pow');
+        if(!exists(axis) || !ftp || !powerMax) return;
+        // powerToHeight fills to 90% of the plot, so the value at the very top
+        // of the plot is powerMax / 0.90.
+        const topWatts = (powerMax / 0.90);
+        const topPct   = Math.round(topWatts / ftp * 100);
+        const spans    = axis.querySelectorAll('span');
+        if(spans.length < 4) return;
+        const fractions = [1, 2 / 3, 1 / 3, 0];
+        fractions.forEach((frac, i) => {
+            const pct   = Math.round(topPct * frac);
+            const watts = Math.round(topWatts * frac);
+            const b = spans[i].querySelector('b');
+            const w = spans[i].querySelector('i');
+            if(b) b.textContent = `${pct}%`;
+            if(w) w.textContent = `${watts}`;
+        });
+    }
+    onScrubStart(e) {
+        if(this.lock) return;
+        if(!exists(e.target?.closest?.('#progress-handle'))) return;
+        e.preventDefault();
+        this.dragging = true;
+        this.classList.add('is-scrubbing');
+        window.addEventListener('pointermove', this.onScrubMove, this.signal);
+        window.addEventListener('pointerup',   this.onScrubEnd,  this.signal);
+    }
+    onScrubMove(e) {
+        if(!this.dragging) return;
+        const rect = this.getBoundingClientRect();
+        const x    = clamp(0, rect.width, e.clientX - rect.left);
+        // Preview: move the progress line (and its handle) to the cursor.
+        this.dom.progress.style.width = `${x}px`;
+    }
+    onScrubEnd(e) {
+        if(!this.dragging) return;
+        this.dragging = false;
+        this.classList.remove('is-scrubbing');
+        window.removeEventListener('pointermove', this.onScrubMove);
+        window.removeEventListener('pointerup',   this.onScrubEnd);
+
+        const target = this.stepAtX(e.clientX);
+        if(exists(target) && this.workoutStatus === 'started') {
+            xf.dispatch('ui:watchGoto', target);
+        } else {
+            // Not running (or no target) — snap the line back to the real position.
+            this.progress({index: this.index, dom: this.dom, parent: this, lapTime: this.lapTime});
+        }
+    }
+    // Map an x coordinate to the interval/step under it, plus how far (in
+    // seconds) into that step the cursor sits — so a drop can land anywhere in a
+    // block, not just snap to its edge.
+    stepAtX(clientX) {
+        const rect   = this.getBoundingClientRect();
+        const x      = clamp(0, rect.width, clientX - rect.left);
+        const groups = this.querySelectorAll('.graph--bar-group');
+        for(const group of groups) {
+            const gRect = group.getBoundingClientRect();
+            const left  = gRect.left - rect.left;
+            if(x >= left && x <= left + gRect.width) {
+                const intervalIndex = parseInt(group.dataset.interval ?? '0', 10);
+                let stepIndex   = 0;
+                let stepElapsed = 0;
+                for(const bar of group.querySelectorAll('.graph--bar')) {
+                    const bRect = bar.getBoundingClientRect();
+                    const bLeft = bRect.left - rect.left;
+                    if(x >= bLeft && x <= bLeft + bRect.width) {
+                        stepIndex = parseInt(bar.dataset.step ?? '0', 10);
+                        const frac = bRect.width > 0
+                            ? clamp(0, 1, (x - bLeft) / bRect.width) : 0;
+                        const step = this.workout?.intervals?.[intervalIndex]
+                            ?.steps?.[stepIndex];
+                        stepElapsed = frac * (step?.duration ?? 0);
+                        break;
+                    }
+                }
+                return { intervalIndex, stepIndex, stepElapsed };
+            }
+        }
+        return null;
+    }
     render() {
         const self = this;
-        const progress = `<div id="progress" class="progress"></div><div id="progress-active"></div>`;
+        const progress = `<div id="progress" class="progress"><div id="progress-handle" class="scrub-handle"></div></div><div id="progress-active"></div>`;
 
         if(equals(this.type, 'workout')) {
             this.innerHTML = progress +
@@ -274,10 +403,13 @@ class WorkoutGraph extends HTMLElement {
 
             this.dom.info      = this.querySelector('.graph--info--cont');
             this.dom.progress  = this.querySelector('#progress');
+            this.dom.handle    = this.querySelector('#progress-handle');
             this.dom.active    = this.querySelector('#progress-active');
             this.dom.intervals = this.querySelectorAll('.graph--bar-group');
             this.dom.steps     = this.querySelectorAll('.graph--bar');
 
+            this.updateAxis(intervalsToMaxPower(this.workout.intervals, this.ftp), this.ftp);
+            this.updateLockState();
             this.progress({index: self.index, dom: self.dom, parent: self, lapTime: self.lapTime});
         }
 

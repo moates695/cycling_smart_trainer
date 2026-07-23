@@ -223,8 +223,11 @@ input, svg, a,
 
 /* Variables */
 :root {
-    --ssb-font-family: 'Roboto', sans-serif;
-    --ssr-font-family: 'Roboto', sans-serif;
+    /* WATTS overhaul: Barlow Semi Condensed for numerals/UI, Barlow for body. */
+    --ssb-font-family: 'Barlow Semi Condensed', 'Roboto', sans-serif;
+    --ssr-font-family: 'Barlow', 'Roboto', sans-serif;
+    --watts-ssb: 'Barlow Semi Condensed', 'Roboto', sans-serif;
+    --watts-body: 'Barlow', 'Roboto', sans-serif;
 }
 
 body {
@@ -256,53 +259,73 @@ body {
     --black-opacity-02:  rgba(0,0,0, 0.2);
     --white-opacity-01:  rgba(255,255,255, 0.1);
     --white-opacity-03:  rgba(255,255,255, 0.3);
+
+    /* ---- WATTS design tokens (design_handoff_watts_trainer) ---- */
+    /* Surfaces & text — cool near-black, low saturation */
+    --watts-bg:        #0e1015;  /* app background */
+    --watts-panel:     #15181f;  /* primary cards */
+    --watts-inset:     #171a21;  /* nav bar, control pills, steppers */
+    --watts-sunken:    #12141a;  /* inputs, expanded panels, bottom nav */
+    --watts-chip:      #1c2129;  /* secondary buttons, chips, toggle-off */
+    --watts-divider:   #22262f;
+    --watts-hero-grad-135: linear-gradient(135deg,#181c24,#14171e);
+    --watts-hero-grad-180: linear-gradient(180deg,#181c24,#14171e);
+
+    --watts-text:      #eef1f6;  /* values, headings */
+    --watts-text-2:    #c4cbd6;  /* labels on controls */
+    --watts-text-mut:  #8b93a3;  /* section labels, units */
+    --watts-text-faint:#7f8798;  /* tick labels, meta */
+    --watts-text-dim:  #5f6775;
+
+    --watts-border:    rgba(255,255,255,.06);
+    --watts-border-2:  rgba(255,255,255,.1);
+    --watts-grid:      rgba(255,255,255,.08);
+
+    /* Accent + data */
+    --watts-accent:      #c8f651;
+    --watts-accent-hover:#dcff7a;
+    --watts-hr:          #ff5470;
+    --watts-cad:         #38bdf8;
+
+    /* Coggan power zones */
+    --watts-z1: #3b4250;
+    --watts-z2: #3d8bfd;
+    --watts-z3: #22c55e;
+    --watts-z4: #eab308;
+    --watts-z5: #f97316;
+    --watts-z6: #ef4444;
+    --watts-z7: #a855f7;
+
+    --watts-connected: #22c55e;
 }
 /* END Variables */
 
-/* Color */
-.zone-one {
-    background-color: var(--zone-gray);
-}
-.zone-two {
-    background-color: var(--zone-blue);
-}
-.zone-three {
-    background-color: var(--zone-teal);
-}
-.zone-four {
-    background-color: var(--zone-green);
-}
-.zone-five {
-    background-color: var(--zone-yellow);
-}
-.zone-six {
-    background-color: var(--zone-orange);
-}
-.zone-seven {
-    background-color: var(--zone-red);
+@keyframes rattle {
+    0%,100% { transform: translateX(0) rotate(0); }
+    15% { transform: translateX(-3px) rotate(-7deg); }
+    30% { transform: translateX(3px) rotate(7deg); }
+    45% { transform: translateX(-3px) rotate(-6deg); }
+    60% { transform: translateX(2px) rotate(5deg); }
+    75% { transform: translateX(-2px) rotate(-3deg); }
 }
 
-.zone-one-color {
-    color: var(--zone-gray);
-}
-.zone-two-color {
-    color: var(--zone-blue);
-}
-.zone-three-color {
-    color: var(--zone-teal);
-}
-.zone-four-color {
-    color: var(--zone-green);
-}
-.zone-five-color {
-    color: var(--zone-yellow);
-}
-.zone-six-color {
-    color: var(--zone-orange);
-}
-.zone-seven-color {
-    color: var(--zone-red);
-}
+/* Color */
+/* WATTS overhaul: zone bars use the Coggan 7-zone palette from the handoff. */
+.zone-one   { background-color: var(--watts-z1); }
+.zone-two   { background-color: var(--watts-z2); }
+.zone-three { background-color: var(--watts-z3); }
+.zone-four  { background-color: var(--watts-z4); }
+.zone-five  { background-color: var(--watts-z5); }
+.zone-six   { background-color: var(--watts-z6); }
+.zone-seven { background-color: var(--watts-z7); }
+
+.zone-one-color   { color: var(--watts-z1); }
+.zone-two-color   { color: var(--watts-z2); }
+.zone-three-color { color: var(--watts-z3); }
+.zone-four-color  { color: var(--watts-z4); }
+.zone-five-color  { color: var(--watts-z5); }
+.zone-six-color   { color: var(--watts-z6); }
+.zone-seven-color { color: var(--watts-z7); }
 
 .black {
     color: var(--black);
@@ -377,13 +400,14 @@ body {
 /* Dark Theme */
 body,
 body.dark-theme {
-    --background-color: var(--dark);
-    --background-color-2: var(--chrome);
-    --foreground-color: var(--white);
-    --foreground-color-inactive: var(--gray);
-    --border-color: var(--white-opacity-01);
+    /* WATTS overhaul: near-black surfaces app-wide. */
+    --background-color: var(--watts-bg);
+    --background-color-2: var(--watts-panel);
+    --foreground-color: var(--watts-text);
+    --foreground-color-inactive: var(--watts-text-mut);
+    --border-color: var(--watts-border);
     --progress: #fff4;
-    --input-color: var(--white);
+    --input-color: var(--watts-sunken);
     --toogle-inactive-color: var(--gray);
     --toogle-active-color: var(--white);
 }
@@ -432,6 +456,9 @@ body.white-theme {
 body {
     color: var(--foreground-color);
     background-color: var(--background-color);
+    font-family: var(--watts-body);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
 }
 
 input {
@@ -1285,7 +1312,7 @@ auto-start-counter {
     cursor: pointer;
 }
 
-#watch-pause, #watch-lap, #watch-stop, #activity-save {
+#watch-pause, #watch-stop, #activity-save {
     display: none;
 
 }
@@ -1530,35 +1557,119 @@ auto-start-counter {
     background-color: var(--background-color);
     z-index: 1;
 }
-.options-show {
-    transform: translateX(-8em);
-}
-
-.options-hide {
-    transform: translateX(0);
-}
-
-.workout--actions {
-    position: absolute;
-    display: grid;
-    top: 0.1em;
-    right: 0;
-    bottom: 0.1em;
-    width: 8em;
-    background-color: var(--red);
-    z-index: 0;
-}
-
-.workout--remove {
-    font-size: 1.4em;
-    justify-self: center;
-    align-self: center;
-    cursor: pointer;
+/* raise the row above its neighbours so its dropdown isn't clipped by them */
+.workout--info.menu-open {
+    z-index: 20;
 }
 
 .workout--options {
-    /* display: flex; */
-    /* justify-content: center; */
+    position: relative;
+}
+
+/* 3-dot dropdown menu */
+.workout--menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 10;
+    min-width: 9em;
+    padding: 0.35em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15em;
+    background-color: var(--surface, var(--background-color, #1c1c1e));
+    border: 1px solid var(--border-color, #333);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.workout--menu[hidden] {
+    display: none;
+}
+
+.workout--menu-item {
+    display: block;
+    width: 100%;
+    padding: 0.55em 0.7em;
+    font-size: var(--workout--type-font-size);
+    text-align: left;
+    color: inherit;
+    background: transparent;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    line-height: 1.3em;
+}
+
+.workout--menu-item:hover {
+    background-color: rgba(127, 127, 127, 0.15);
+}
+
+.workout--menu-item--danger {
+    color: var(--zone-red, #E7776B);
+}
+
+.workout--menu-item--danger:hover {
+    background-color: rgba(216, 70, 54, 0.15);
+}
+
+/* Delete confirmation modal */
+.wl-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1em;
+}
+
+.wl-modal {
+    background: var(--surface, var(--background-color, #1c1c1e));
+    border: 1px solid var(--border-color, #333);
+    border-radius: 10px;
+    width: min(420px, 100%);
+    display: flex;
+    flex-direction: column;
+}
+
+.wl-modal-head {
+    padding: 0.9em 1em;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color, #2a2a2e);
+}
+
+.wl-modal-body {
+    padding: 0.9em 1em;
+    font-size: 0.9em;
+    opacity: 0.85;
+    line-height: 1.4;
+}
+
+.wl-modal-foot {
+    display: flex;
+    gap: 0.5em;
+    justify-content: flex-end;
+    padding: 0.75em 1em;
+    border-top: 1px solid var(--border-color, #2a2a2e);
+}
+
+.wl-modal-foot .btn {
+    padding: 0.5em 1em;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+.wl-modal-foot .btn--danger {
+    color: #fff;
+    background-color: var(--zone-red, #C0392B);
+    border-color: var(--zone-red, #C0392B);
+}
+
+.wl-modal-foot .btn--danger:hover {
+    background-color: #d84636;
+    border-color: #d84636;
 }
 
 .workout--short-info {
@@ -1718,7 +1829,7 @@ auto-start-counter {
 
 .library--switch--group {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     justify-items: center;
     align-items: center;
 }
@@ -1768,19 +1879,11 @@ navigation-action {
     display: none;
 }
 
-#workout-editor {
-    display: none;
-}
-
 #workouts.active {
     display: block;
 }
 
 #ride-report.active {
-    display: block;
-}
-
-#workout-editor.active {
     display: block;
 }
 /* END Ride Report */
@@ -2559,6 +2662,54 @@ workout-graph-svg {
     text-align: left;
     padding: 1rem 0em;
     color: var(--gray);
+}
+
+/* collapsible sections (native <details>/<summary>) */
+.list--collapsible > summary.list--sub-heading {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    user-select: none;
+}
+.list--collapsible > summary.list--sub-heading::-webkit-details-marker {
+    display: none;
+}
+.list--collapsible > summary.list--sub-heading::before {
+    content: "\25BE"; /* ▾ */
+    display: inline-block;
+    font-size: 0.8em;
+    transition: transform 0.15s ease;
+}
+.list--collapsible:not([open]) > summary.list--sub-heading::before {
+    transform: rotate(-90deg);
+}
+
+.workout--empty {
+    padding: 1rem 0;
+    color: var(--gray);
+    text-align: left;
+    line-height: 1.5em;
+    max-width: 60ch;
+}
+
+.activity--load-more {
+    display: block;
+    width: 100%;
+    margin: 1rem 0 0;
+    padding: 0.8rem 1rem;
+    background: transparent;
+    color: var(--gray);
+    border: 1px solid var(--gray);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    text-transform: uppercase;
+}
+.activity--load-more:hover {
+    color: var(--foreground-color, #fff);
+    border-color: var(--foreground-color, #fff);
 }
 
 
@@ -3706,3 +3857,606 @@ and (min-width: 1900px) {
 }
 /* END Media Queries */
 
+
+/* ============================================================
+   WATTS overhaul — Home (live ride) + global bottom nav
+   design_handoff_watts_trainer. Scoped mostly to `.watts-*`
+   classes so it can be reviewed independently of legacy CSS.
+   ============================================================ */
+
+/* --- Home container: switch legacy fixed grid to a scroll page --- */
+#home-page-wrapper.watts-home {
+    display: block;
+    height: auto;
+    min-height: auto;
+    grid-template-rows: none;
+    grid-template-columns: none;
+    padding: 0;
+    text-align: left;
+}
+.watts-home--inner {
+    max-width: 1360px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 12px 32px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 12px;
+    overflow-y: auto;   /* last-resort scroll when the viewport is too short to squish further */
+}
+.watts-home .watts-label {
+    font: 600 12px/1 var(--watts-ssb);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--watts-text-mut);
+}
+
+/* --- Top bar --- */
+.watts-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 0 18px;
+    border-bottom: 1px solid var(--watts-border);
+    flex-wrap: wrap;
+}
+.watts-brand { display: flex; align-items: baseline; gap: 14px; }
+.watts-brand .watts-bolt,
+.watts-brand .watts-topbar--div { align-self: center; }
+.watts-bolt { filter: drop-shadow(0 0 8px rgba(200,246,81,.6)); }
+.watts-bolt path { fill: var(--watts-accent); }
+.watts-wordmark {
+    font: 700 20px/1 var(--watts-ssb);
+    letter-spacing: .24em;
+    color: var(--watts-text);
+}
+.watts-topbar--div { width: 1px; height: 20px; background: rgba(255,255,255,.12); margin: 0 4px; }
+.watts-workout-name { font: 700 18px/1 var(--watts-ssb); color: var(--watts-text); }
+.watts-cat {
+    font: 600 12px/1 var(--watts-ssb);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+.watts-conn { display: flex; align-items: center; gap: 10px; }
+.watts-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: auto;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: var(--watts-inset);
+    border: 1px solid var(--watts-border);
+    cursor: pointer;
+}
+.watts-pill--dot { width: 8px; height: 8px; border-radius: 50%; margin: 0; flex: 0 0 auto; }
+.watts-pill--dot.on      { background: var(--watts-connected); box-shadow: 0 0 8px rgba(34,197,94,.7); }
+.watts-pill--dot.off     { background: var(--watts-text-dim); }
+.watts-pill--dot.loading { background: var(--watts-z4); }
+.watts-pill--label {
+    font: 600 12px/1 var(--watts-ssb);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--watts-text-2);
+}
+.watts-pill--label data-view { color: inherit; }
+
+/* --- Panels --- */
+.watts-panel {
+    background: var(--watts-panel);
+    border: 1px solid var(--watts-border);
+    border-radius: 18px;
+}
+.watts-data { display: flex; gap: 24px; padding: 18px 24px; margin: 0; flex: 0 0 auto; }
+.watts-data--main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.watts-data--top { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+
+/* Power hero */
+.watts-hero--head { display: flex; align-items: center; gap: 14px; }
+.watts-zonechip {
+    font: 600 11px/1 var(--watts-ssb);
+    letter-spacing: .1em;
+    padding: 4px 10px;
+    border: 1px solid var(--watts-border-2);
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.watts-hero--row { display: flex; align-items: baseline; gap: 12px; margin-top: 4px; }
+.watts-hero--value {
+    font: 700 104px/.82 var(--watts-ssb);
+    letter-spacing: -.02em;
+    color: var(--watts-text) !important; /* beats PowerValue inline colour */
+}
+.watts-hero--unit { font: 600 24px/1 var(--watts-ssb); color: var(--watts-text-mut); }
+.watts-hero--wkg  { font: 600 18px/1 var(--watts-ssb); color: var(--watts-accent); }
+
+/* Target */
+.watts-target { flex: 0 0 auto; width: 150px; }
+.watts-target--row { display: flex; align-items: baseline; gap: 7px; margin-top: 8px; }
+.watts-target--value { font: 700 48px/.85 var(--watts-ssb); color: var(--watts-z5); }
+.watts-target--unit  { font: 600 16px/1 var(--watts-ssb); color: var(--watts-text-mut); }
+.watts-target--info {
+    display: block;
+    font: 600 12px/1 var(--watts-ssb);
+    letter-spacing: .04em;
+    color: var(--watts-text-mut);
+    margin-top: 7px;
+}
+.watts-adherence {
+    position: relative;
+    display: block;
+    height: 8px;
+    border-radius: 5px;
+    background: var(--watts-divider);
+    margin-top: 11px;
+}
+.watts-adherence--fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0;
+    background: linear-gradient(90deg,#f97316,#fbbf24);
+    border-radius: 5px;
+}
+.watts-adherence--tick {
+    position: absolute;
+    top: -3px; bottom: -3px;
+    width: 3px;
+    left: 75%;
+    transform: translateX(-50%);
+    background: var(--watts-text);
+    border-radius: 2px;
+    box-shadow: 0 0 6px rgba(0,0,0,.5);
+}
+
+/* Power history */
+.watts-hist { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 8px; }
+.watts-hist--head { display: flex; align-items: center; justify-content: space-between; }
+.watts-seg {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--watts-inset);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 8px;
+}
+.watts-hist--windows span {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font: 600 11px/1 var(--watts-ssb);
+    color: var(--watts-text-mut);
+    cursor: pointer;
+}
+.watts-hist--windows span.active { background: var(--watts-accent); color: var(--watts-bg); font-weight: 700; }
+.watts-hist--plot { position: relative; height: 84px; }
+.watts-hist--plot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.watts-hist--grid { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(255,255,255,.08); }
+.watts-hist--grid-top { top: 0; }
+.watts-hist--grid-mid { top: 41.2%; }
+.watts-hist--grid span {
+    position: absolute;
+    right: 0; top: -6px;
+    font: 600 9px/1 var(--watts-ssb);
+    color: var(--watts-text-dim);
+}
+
+/* Metric grid */
+.watts-metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px 24px; }
+.watts-metric--label {
+    font: 600 11px/1 var(--watts-ssb);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--watts-text-faint);
+}
+.watts-metric--value {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 8px;
+    font: 700 44px/.9 var(--watts-ssb);
+    color: var(--watts-text);
+}
+.watts-metric--value > * { font: inherit; }
+.watts-metric--unit { font-size: 14px; font-weight: 600; color: var(--watts-text-mut); }
+.watts-metric .watts-hr { color: #ff5470 !important; }
+.watts-accent-text, .watts-accent-text > * { color: var(--watts-accent); }
+.watts-metric--spark { display: block; width: 100%; max-width: 160px; height: 24px; margin-top: 8px; }
+.watts-metric--spark svg { width: 100%; height: 100%; overflow: visible; }
+
+/* FTP gauge */
+.watts-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    width: 58px;
+    flex: 0 0 auto;
+    border-left: 1px solid var(--watts-border);
+    padding-left: 20px;
+}
+.watts-gauge--top, .watts-gauge--bottom {
+    font: 600 10px/1 var(--watts-ssb);
+    letter-spacing: .1em;
+    color: var(--watts-text-dim);
+}
+.watts-gauge--caption { font: 600 10px/1 var(--watts-ssb); letter-spacing: .12em; color: var(--watts-text-faint); }
+.watts-gauge--bar {
+    position: relative;
+    flex: 1;
+    width: 12px;
+    border-radius: 6px;
+    background: linear-gradient(to top,
+        #3b4250 0%, #3b4250 32.4%,
+        #3d8bfd 32.4%, #3d8bfd 44.1%,
+        #22c55e 44.1%, #22c55e 52.9%,
+        #eab308 52.9%, #eab308 61.8%,
+        #f97316 61.8%, #f97316 70.6%,
+        #ef4444 70.6%, #ef4444 88.2%,
+        #a855f7 88.2%, #a855f7 100%);
+}
+.watts-gauge--marker {
+    position: absolute;
+    left: -7px; right: -7px;
+    height: 3px;
+    bottom: 0;
+    background: var(--watts-text);
+    border-radius: 2px;
+    box-shadow: 0 0 6px rgba(0,0,0,.6);
+}
+.watts-gauge--value {
+    position: absolute;
+    left: 16px; bottom: 0;
+    transform: translateY(50%);
+    font: 700 12px/1 var(--watts-ssb);
+    color: var(--watts-text);
+    white-space: nowrap;
+}
+
+/* --- Workout profile card --- */
+.watts-profile { padding: 14px 8px 12px; margin: 0; flex: 1 1 auto; min-height: 96px; display: flex; flex-direction: column; }
+.watts-profile--head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; flex-wrap: wrap; flex: 0 0 auto; }
+.watts-legend { display: flex; align-items: center; gap: 14px; }
+.watts-legend--item {
+    display: flex; align-items: center; gap: 6px;
+    font: 600 11px/1 var(--watts-ssb);
+    letter-spacing: .08em;
+    color: var(--watts-text-mut);
+}
+.watts-legend--sw { width: 16px; height: 3px; border-radius: 2px; }
+.watts-legend--pow { background: linear-gradient(90deg,#3b4250,#3d8bfd,#22c55e,#eab308,#f97316,#ef4444); }
+.watts-legend--hr  { background: #ff5470; height: 2px; }
+.watts-legend--cad { background: #38bdf8; height: 2px; }
+.watts-profile--body { display: flex; align-items: stretch; flex: 1 1 auto; min-height: 0; }
+.watts-profile--axis { position: relative; width: 60px; flex: 0 0 auto; height: auto; }
+.watts-profile--axis span {
+    position: absolute;
+    right: 8px;
+    font: 700 11px/1 var(--watts-ssb);
+    color: var(--watts-text-2);
+}
+/* Left (power) axis: percentage of FTP on top, absolute watts underneath. */
+.watts-profile--axis-pow span {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+.watts-profile--axis-pow span b { font: 700 11px/1 var(--watts-ssb); color: var(--watts-text-2); }
+.watts-profile--axis-pow span i {
+    font: 700 11px/1 var(--watts-ssb);
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
+    color: var(--watts-text, #e6ebf2);
+}
+.watts-profile--axis-pow span i::after { content: "W"; opacity: .85; margin-left: 1px; }
+.watts-profile--axis-pow span i:empty::after,
+.watts-profile--axis-pow span i[data-empty]::after { content: ""; }
+/* Right-hand axes: HR (bpm) and cadence (rpm) reference scales. */
+.watts-profile--axis-r { width: 44px; border-left: 1px solid rgba(255,255,255,.12); }
+.watts-profile--axis-r span {
+    right: auto;
+    left: 8px;
+    font: 700 11px/1 var(--watts-ssb);
+    font-variant-numeric: tabular-nums;
+}
+.watts-profile--axis-hr span  { color: #ff5470; }
+.watts-profile--axis-cad span { color: #38bdf8; }
+.watts-axis-unit {
+    position: absolute;
+    left: 8px;
+    bottom: -16px;
+    font: 600 9px/1 var(--watts-ssb);
+    font-style: normal;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--watts-text-mut);
+}
+.watts-profile--axis-hr .watts-axis-unit  { color: #ff5470; opacity: .8; }
+.watts-profile--axis-cad .watts-axis-unit { color: #38bdf8; opacity: .8; }
+#graph-workout.watts-profile--plot {
+    position: relative;
+    display: block;
+    flex: 1;
+    min-width: 0;
+    height: auto;
+    border: none;
+    border-left: 1px solid rgba(255,255,255,.12);
+    border-bottom: 1px solid rgba(255,255,255,.12);
+    grid-template-rows: none;
+    overflow: visible;
+}
+.watts-profile--plot::before,
+.watts-profile--plot::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0;
+    border-top: 1px dashed rgba(255,255,255,.08);
+    pointer-events: none;
+}
+.watts-profile--plot::before { top: 33.3%; }
+.watts-profile--plot::after  { top: 66.6%; }
+.watts-profile--plot .workout--graph-cont {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    justify-content: flex-start;
+}
+.watts-profile--plot .graph--bar { border-radius: 3px 3px 0 0; opacity: .9; }
+/* Persistent per-interval labels: watts above the block, duration at its base. */
+.watts-profile--plot .graph--bar-group { position: relative; }
+.graph--bar-watt,
+.graph--bar-dur {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    white-space: nowrap;
+    font: 600 10px/1 var(--watts-ssb);
+    font-variant-numeric: tabular-nums;
+    z-index: 3;
+}
+.graph--bar-watt { bottom: 100%; margin-bottom: 3px; color: var(--watts-text, #e6ebf2); }
+/* White + shadow so the duration reads on both dark (Z1/Z2) and bright bars. */
+.graph--bar-dur  { bottom: 3px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.65); }
+/* Narrow intervals: not enough width for horizontal text, so stack the labels
+   vertically INSIDE the bar (watts near the top, duration near the base). */
+.graph--bar-group.is-narrow .graph--bar-watt,
+.graph--bar-group.is-narrow .graph--bar-dur {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: translateX(-50%) rotate(180deg);
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,.7);
+}
+.graph--bar-group.is-narrow .graph--bar-watt { bottom: auto; top: 5px; margin-bottom: 0; }
+.graph--bar-group.is-narrow .graph--bar-dur  { bottom: 5px; }
+.watts-profile--plot #progress {
+    background: transparent;
+    border-right: 2px solid var(--watts-accent);
+    overflow: visible;
+}
+/* Glow only the right edge (current-position line), not the whole box. */
+.watts-profile--plot #progress::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -1px;
+    width: 2px;
+    height: 100%;
+    box-shadow: 0 0 10px 1px rgba(200,246,81,.6);
+    pointer-events: none;
+}
+.watts-profile--plot #progress-active { background: rgba(200,246,81,.06); }
+/* Draggable scrub handle sitting on the current-position line. */
+.watts-profile--plot .scrub-handle {
+    position: absolute;
+    top: -7px;
+    right: -8px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--watts-accent);
+    border: 2px solid var(--watts-bg);
+    box-shadow: 0 0 8px rgba(200,246,81,.7);
+    cursor: grab;
+    pointer-events: auto;
+    touch-action: none;
+    z-index: 4;
+}
+.watts-profile--plot .scrub-handle.is-locked { display: none; }
+.watts-profile--plot.is-scrubbing .scrub-handle { cursor: grabbing; }
+.watts-autostart {
+    position: absolute;
+    inset: 0;
+    display: none;
+    place-items: center;
+    font: 700 80px/1 var(--watts-ssb);
+    color: var(--watts-accent);
+    z-index: 3;
+}
+.watts-autostart.active { display: grid; }
+
+/* --- Control bar --- */
+.watts-controlbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 2px 0 6px;
+    flex-wrap: wrap;
+    flex: 0 0 auto;
+}
+.watts-transport { display: flex; align-items: center; gap: 8px; }
+.watts-tbtn {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--watts-inset);
+    border: 1px solid rgba(255,255,255,.07);
+    display: grid;
+    place-items: center;
+    color: var(--watts-text-2);
+    cursor: pointer;
+}
+.watts-tbtn--icon { width: 22px; height: 22px; fill: currentColor; }
+.watts-tbtn--primary { width: 56px; background: var(--watts-accent); border: none; color: var(--watts-bg); }
+.watts-tbtn--stop { color: var(--watts-hr); }
+.watts-tbtn.is-disabled { opacity: .3; cursor: default; pointer-events: none; }
+.watts-controlbar--div { width: 1px; height: 32px; background: rgba(255,255,255,.1); }
+.watts-erg-label {
+    font: 700 13px/1 var(--watts-ssb);
+    letter-spacing: .1em;
+    color: var(--watts-accent);
+    padding: 9px 15px;
+    border-radius: 10px;
+    background: rgba(200,246,81,.1);
+    border: 1px solid rgba(200,246,81,.3);
+}
+.watts-stepper {
+    display: flex;
+    align-items: center;
+    background: var(--watts-inset);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 12px;
+    overflow: hidden;
+}
+.watts-stepper--btn {
+    width: 48px; height: 44px;
+    display: grid;
+    place-items: center;
+    font: 700 22px/1 var(--watts-ssb);
+    color: var(--watts-text-2);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+.watts-stepper--inc { color: var(--watts-accent); }
+.watts-stepper--value-cont { display: flex; align-items: baseline; justify-content: center; gap: 4px; min-width: 96px; padding: 0 6px; }
+.watts-stepper--value {
+    width: 56px;
+    text-align: center;
+    font: 700 20px/1 var(--watts-ssb);
+    color: var(--watts-text);
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+.watts-stepper--unit { font-size: 12px; color: var(--watts-text-mut); }
+.watts-lock {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--watts-inset);
+    border: 1px solid rgba(255,255,255,.07);
+    display: grid;
+    place-items: center;
+    color: var(--watts-text-mut);
+    cursor: pointer;
+}
+.watts-lock .mode-lock--toggle--icon { position: static; top: auto; fill: currentColor; width: 22px; height: 22px; }
+
+/* --- Global integrated header: brand · nav · connection (all screens) --- */
+:root { --watts-topnav-h: 58px; }
+.watts-topnav {
+    position: fixed;
+    left: 0; right: 0; top: 0;
+    bottom: auto;
+    width: 100%;
+    height: var(--watts-topnav-h);
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    background: var(--watts-sunken);
+    border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.watts-topnav--inner {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+    max-width: 1360px;
+    height: 100%;
+    margin: 0 auto;
+    padding: 0 32px;
+}
+.watts-topnav .watts-brand { flex: 1 1 0; min-width: 0; }
+.watts-topnav .watts-conn { flex: 1 1 0; justify-content: flex-end; }
+/* nav sits centred between brand (left) and connection (right) */
+.watts-topnav .menu { display: flex; flex: 0 0 auto; height: 100%; padding: 0; margin: 0; background: transparent; }
+.watts-topnav .menu--row {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    gap: 6px;
+    padding: 0;
+    margin: 0;
+    height: 100%;
+}
+.watts-topnav .menu--btn {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    cursor: pointer;
+    color: var(--watts-text-faint);
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    transition: color .15s, border-color .15s;
+}
+.watts-topnav .menu--btn:hover { color: var(--watts-text); }
+.watts-topnav .menu--btn--icon { width: 18px; height: 18px; fill: currentColor; }
+.watts-topnav .menu--btn--label {
+    font: 600 12px/1 var(--watts-ssb);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+.watts-topnav .menu--btn.active {
+    color: var(--watts-accent);
+    border-bottom-color: var(--watts-accent);
+}
+
+/* Page shells sit below the fixed header. */
+.page { padding-top: var(--watts-topnav-h); }
+/* #home-page has an id-specificity `padding:0` in legacy CSS — restate the offset
+   at id+class specificity so the header doesn't overlap the data panel.
+   Full-height flex column so the ride view fits the viewport; the workout
+   profile flexes to absorb/give space and scrolling is only a last resort. */
+#home-page.page {
+    height: 100vh;
+    min-height: 100vh;
+    padding-top: var(--watts-topnav-h);
+    padding-bottom: 0;
+    display: flex;
+    flex-direction: column;
+}
+#home-page-wrapper.watts-home {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+@media (max-width: 900px) {
+    .watts-home--inner { padding: 0 16px 24px; }
+    .watts-data { flex-direction: column; gap: 20px; padding: 20px; }
+    .watts-gauge { flex-direction: row; width: auto; border-left: none; border-top: 1px solid var(--watts-border); padding-left: 0; padding-top: 16px; }
+    .watts-gauge--bar { width: 100%; height: 12px; }
+    .watts-metrics { grid-template-columns: repeat(2,1fr); }
+    .watts-hero--value { font-size: 76px; }
+}
+@media (max-width: 1000px) {
+    /* keep the header to one compact row: drop the workout name + pill text */
+    .watts-topnav .watts-workout-name,
+    .watts-topnav .watts-cat,
+    .watts-topnav--inner .watts-topbar--div { display: none; }
+    .watts-topnav .watts-pill--label { display: none; }
+    .watts-topnav .watts-pill { padding: 6px; }
+}
+@media (max-width: 640px) {
+    .watts-topnav--inner { gap: 8px; padding: 0 12px; }
+    .watts-topnav .watts-wordmark { display: none; }
+    .watts-topnav .menu--btn { padding: 0 10px; }
+    .watts-topnav .menu--btn--label { font-size: 11px; letter-spacing: .04em; }
+}
+/* END WATTS overhaul — Home */

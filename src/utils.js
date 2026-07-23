@@ -14,7 +14,7 @@ function formatTime(args = {}) {
     if(unit === 'seconds') {
         let hour = Math.floor(value / 3600);
         let min  = Math.floor(value % 3600 / 60);
-        let sec  = value % 60;
+        let sec  = Math.floor(value % 60);
         let sD   = (sec < 10)  ? `0${sec}`  : `${sec}`;
         let mD   = (min < 10)  ? `0${min}`  : `${min}`;
         let hD   = (hour < 10) ? `0${hour}` : `${hour}`;

@@ -89,12 +89,8 @@ function KeyboardControls() {
     xf.sub('key:e', e => {
         xf.dispatch('ui:mode-set', ControlMode.erg);
     });
-    xf.sub('key:r', e => {
-        xf.dispatch('ui:mode-set', ControlMode.resistance);
-    });
-    xf.sub('key:s', e => {
-        xf.dispatch('ui:mode-set', ControlMode.sim);
-    });
+    // Manual switching to Resistance ('r') and Slope/sim ('s') removed (ERG-only UI).
+    // sim/resistance are still entered automatically by workouts with grade steps and GPX courses.
 
     // Watch
     xf.sub('key:space', e => {

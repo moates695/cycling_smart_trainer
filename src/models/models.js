@@ -760,7 +760,9 @@ class Workouts extends Model {
     }
     defaultValue() {
         const self = this;
-        return workoutsFile.map((w) => Object.assign(self.workoutModel.parse(w), {id: uuid()}));
+        // isDefault marks the read-only built-in library; user workouts (from
+        // idb, uploads and the designer) never carry it.
+        return workoutsFile.map((w) => Object.assign(self.workoutModel.parse(w), {id: uuid(), isDefault: true}));
     }
     defaultIsValid(value) {
         const self = this;

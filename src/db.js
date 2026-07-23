@@ -337,6 +337,27 @@ xf.reg('ui:workout:upload', async function(files, db) {
     }
 
 });
+xf.reg('ui:workout:create', (zwo, db) => {
+    const workout = models.workout.parse(zwo);
+    models.workouts.add(db.workouts, workout);
+    xf.dispatch('db:workouts', db);
+});
+// Save from the designer. Carries an explicit id so the first save creates a
+// library entry and later saves of the same editing session update it in place
+// (rather than piling up duplicates).
+xf.reg('ui:workout:save', (data, db) => {
+    const { zwo, id } = data ?? {};
+    const workout = models.workout.parse(zwo);
+    workout.id = id;
+    const i = db.workouts.findIndex((w) => equals(w.id, id));
+    if(i >= 0) {
+        db.workouts[i] = workout;
+        models.workouts.save(workout);
+    } else {
+        models.workouts.add(db.workouts, workout);
+    }
+    xf.dispatch('db:workouts', db);
+});
 xf.reg('watch:stopped', (_, db) => {
     try {
         models.activity.createFromCurrent(db);
