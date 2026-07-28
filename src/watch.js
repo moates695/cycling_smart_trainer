@@ -1,11 +1,18 @@
-import { equals, exists, empty, first, last, xf, avg, max, toFixed, print, } from './functions.js';
+import { equals, exists, empty, first, last, xf, avg, max, clamp, toFixed, print, } from './functions.js';
 import { kphToMps, mpsToKph, timeDiff, pad } from './utils.js';
 import { models } from './models/models.js';
 import { ControlMode, } from './ble/enums.js';
 import { TimerStatus, EventType, } from './activity/enums.js';
+import { WorkoutCategory } from './workouts/categories.js';
+import {
+    TimingAction, timingDefaults, onPowerSample,
+} from './watch-timing.js';
+import { timer } from './timer-worker.js';
 
-// const timer = new Worker('./timer.js');
-const timer = new Worker(new URL('./timer.js', import.meta.url));
+// Media-player "prev" grace window (seconds). If the "prev" button is pressed
+// within this many seconds of entering the current interval, jump to the start
+// of the *previous* interval; past it, restart the *current* interval.
+const BACK_TO_PREV_WINDOW_S = 5;
 
 class Watch {
     constructor(args) {
@@ -28,11 +35,15 @@ class Watch {
         this.intervals         = [];
         this.workoutType       = "workout";
         this.lock              = false;
-        this.autoStartCounter  = 3;
-        this.autoPauseCounter  = 0;
-        this.hasBeenAutoPaused = false;
-        this.autoPause         = true;
+        // Arming / auto pause / auto resume state — the rules live in
+        // watch-timing.js, this is just where they are kept between samples.
+        this.timing            = timingDefaults();
+        // Latest 1 s power, so the arming clock has something to read even on a
+        // second where the trainer sent nothing.
+        this.power             = 0;
+        this.armClock          = undefined;
         this.autoStart         = true;
+        this.autoPause         = true;
         this.init();
     }
     init() {
@@ -61,7 +72,12 @@ class Watch {
         });
         xf.sub('db:workout',       workout => {
             self.intervals = workout.intervals;
-            if(workout.meta.category?.toLowerCase().includes("test")) {
+            // A pre-start prev/next selection points into the old workout's
+            // intervals — reset it so start doesn't index out of range.
+            if(!self.isWorkoutStarted() && self.isStopped() && self.intervalIndex !== 0) {
+                xf.dispatch('watch:intervalIndex', 0);
+            }
+            if(workout.meta.category?.toLowerCase().includes(WorkoutCategory.test.toLowerCase())) {
                 self.workoutType = "test";
                 // force turn off auto pausing for Test Category workouts
                 xf.dispatch(`sources`, {autoPause: false});
@@ -74,9 +90,15 @@ class Watch {
         xf.sub('db:sources', self.onSources.bind(this));
         timer.addEventListener('message', self.onTick.bind(self));
 
-        // UI subs
-        xf.sub('ui:workoutStart', e => { self.startWorkout();   });
-        xf.sub('ui:watchStart',   e => { self.start();          });
+        // Fast forward. Only the device sim dispatches this (sim.js), and only
+        // in dev — it runs the workout clock faster than real time so a session
+        // can be watched end to end without riding it.
+        xf.sub('sim:speed', self.onSpeed.bind(self));
+
+        // UI subs. Play dispatches both of these together; arming is idempotent
+        // so the pair reads as the single press it is.
+        xf.sub('ui:workoutStart', e => { self.onStartPressed();  });
+        xf.sub('ui:watchStart',   e => { self.onStartPressed();  });
         xf.sub('workout:restore', e => { self.restoreWorkout(); });
         xf.sub('ui:watchPause',   e => { self.pause();          });
         xf.sub('ui:watchResume',  e => { self.resume();         });
@@ -85,7 +107,10 @@ class Watch {
         xf.sub('ui:watchForward', e => { self.forward();        });
         xf.sub('ui:watchGoto',  pos => { self.goto(pos?.intervalIndex, pos?.stepIndex, pos?.stepElapsed); });
         xf.sub('ui:watchStop',    e => {
-            const stop = confirm('Confirm Stop?');
+            // callers that have already asked the user — loading a different
+            // workout from the library mid-ride — pass {confirmed: true} so we
+            // don't prompt twice for the same decision.
+            const stop = e?.confirmed || confirm('Confirm Stop?');
             if(stop) {
                 self.stop();
             }
@@ -103,85 +128,122 @@ class Watch {
         return this.state;
     }
     onSources(value) {
-        this.autoPause = value.autoPause ?? this.autoPause;
         this.autoStart = value.autoStart ?? this.autoStart;
+        this.autoPause = value.autoPause ?? this.autoPause;
+    }
+    // Tick the workout clock at `rate` x real time. The worker keeps the rate
+    // across start/pause/stop, so this can be changed mid-ride.
+    onSpeed(rate) {
+        timer.postMessage({cmd: 'rate', rate: clamp(1, 20, rate ?? 1)});
     }
     onPower1s(power) {
-        if(this.autoPause) {
-            if(power === 0 && this.isStarted()) {
-                this.autoPauseCounter += 1;
-            } else {
-                this.autoPauseCounter = 0;
-            }
-
-            if(this.autoPauseCounter >= 4) {
-                this.autoPauseCounter = 0;
-                xf.dispatch(`ui:watchPause`);
-                this.hasBeenAutoPaused = true;
-            }
-
-            if(power > 40 && this.hasBeenAutoPaused) {
-                xf.dispatch(`ui:watchResume`);
-            }
-        }
-
-        if(this.autoStart && this.isStopped()) {
-            // check
-            if(this.autoStartCounter < 0) return;
-            if(this.autoStartCounter === 0) {
-                this.autoStartCounter = -1;
-                xf.dispatch(`ui:watchStart`);
-                xf.dispatch('ui:workoutStart');
-                xf.dispatch(`ui:autoStartCounter`, -1);
-                return;
-            }
-            // update
-            if(power === 0) {
-                this.autoStartCounter = 3;
-                xf.dispatch(`ui:autoStartCounter`, this.autoStartCounter);
-            }
-            if(power > 40) {
-                this.autoStartCounter -= 1;
-                xf.dispatch(`ui:autoStartCounter`, this.autoStartCounter);
-            }
-        }
+        this.power = power ?? 0;
+        // While armed the wait is driven by its own clock below, so that the
+        // 15 s is 15 s of real time: db:power1s only fires while the trainer is
+        // actually sending, and a silent one would stall the wait forever.
+        if(this.timing.armed) return;
+        this.applyTiming(this.power);
     }
-    start() {
-        const self = this;
-        if(self.isStarted() && !self.isWorkoutStarted()) {
-            self.pause();
-        } else {
-            timer.postMessage('start');
-            xf.dispatch('watch:started');
-
-            xf.dispatch('watch:event', {
-                timestamp: Date.now(),
-                type: EventType.start,
-            });
-        }
+    onArmTick() {
+        if(!this.timing.armed) return;
+        this.applyTiming(this.power);
     }
-    startWorkout() {
-        const self = this;
+    applyTiming(power) {
+        const wasArmed = this.timing.armed;
+        const {state, action} = onPowerSample({
+            power,
+            status:   this.state,
+            state:    this.timing,
+            settings: {autoStart: this.autoStart, autoPause: this.autoPause},
+        });
+        this.timing = state;
+        if(!equals(wasArmed, state.armed)) {
+            this.stopArmClock();
+            xf.dispatch('watch:armed', state.armed);
+        }
 
-        // in case of pressing play button during auto start countdown
-        this.autoStartCounter = -1;
-        xf.dispatch(`ui:autoStartCounter`, -1);
-
-        if(self.isWorkoutStarted() || (
-            // check for intervalIndex allows for multiple workouts in one session
-            self.isWorkoutDone() && self.intervalIndex > 0
-        )) {
+        // arm-expired needs nothing beyond leaving armed: the clock was never
+        // started, so the watch is already back where it was.
+        if(equals(action, TimingAction.launch))     this.launch();
+        if(equals(action, TimingAction.autoPause))  xf.dispatch('ui:watchPause');
+        if(equals(action, TimingAction.autoResume)) xf.dispatch('ui:watchResume');
+    }
+    stopArmClock() {
+        if(!exists(this.armClock)) return;
+        clearInterval(this.armClock);
+        this.armClock = undefined;
+    }
+    // Play. Rather than starting the clock, this arms the watch: the ride
+    // begins on the rider's first turn of the pedals, and gives up after
+    // ARM_WINDOW_S if they never get going. Press pause to cancel the wait.
+    onStartPressed() {
+        // Play on a running free ride is still the pause toggle it always was.
+        if(this.isStarted() && !this.isWorkoutStarted()) {
+            this.pause();
             return;
         }
+        if(this.isStarted()) return;
+        this.arm();
+    }
+    arm() {
+        if(this.timing.armed) return;
+        this.timing = {...this.timing, armed: true, armCounter: 0};
+        this.stopArmClock();
+        this.armClock = setInterval(this.onArmTick.bind(this), 1000);
+        xf.dispatch('watch:armed', true);
+    }
+    disarm() {
+        this.stopArmClock();
+        if(!this.timing.armed) return;
+        this.timing = {...this.timing, armed: false, armCounter: 0};
+        xf.dispatch('watch:armed', false);
+    }
+    // The rider turned the pedals while armed — start for real. Mid-ride that
+    // means picking the clock back up; from a standstill it means opening the
+    // workout at its first interval.
+    launch() {
+        if(this.isPaused()) {
+            this.resume();
+            return;
+        }
+        this.beginWorkout();
+    }
+    startTimer() {
+        // The clock is running again, so whatever pause the app made is
+        // settled — a pause from here on is the rider's until it says otherwise.
+        this.timing = {
+            ...this.timing,
+            pausedAutomatically: false,
+            idleCounter: 0,
+            startCounter: 0,
+            coastedSincePause: false,
+        };
 
-        let intervalTime = 0;
-        let stepTime     = 0;
+        timer.postMessage('start');
+        xf.dispatch('watch:started');
 
-        if(exists(self.intervals)) {
-            intervalTime = self.intervals[0]?.duration ?? 0;
-            stepTime     = self.intervals[0]?.steps[0].duration ?? 0;
+        xf.dispatch('watch:event', {
+            timestamp: Date.now(),
+            type: EventType.start,
+        });
+    }
+    beginWorkout() {
+        const self = this;
 
-            xf.dispatch('watch:intervalIndex',  0);
+        const alreadyRunning = self.isWorkoutStarted() || (
+            // check for intervalIndex allows for multiple workouts in one session
+            self.isWorkoutDone() && self.intervalIndex > 0
+        );
+
+        if(!alreadyRunning && exists(self.intervals)) {
+            // Start from the interval pre-selected with prev/next while
+            // stopped (0 in the default flow — stop() resets the index).
+            const i = exists(self.intervals[self.intervalIndex]) ? self.intervalIndex : 0;
+
+            const intervalTime = self.intervals[i]?.duration ?? 0;
+            const stepTime     = self.intervals[i]?.steps[0].duration ?? 0;
+
+            xf.dispatch('watch:intervalIndex',  i);
             xf.dispatch('watch:stepIndex', 0);
 
             xf.dispatch('workout:started');
@@ -197,7 +259,7 @@ class Watch {
         }
 
         if(!self.isStarted()) {
-            self.start();
+            self.startTimer();
         }
     }
     restoreWorkout() {
@@ -209,23 +271,28 @@ class Watch {
         if(self.isStarted()) {
             self.pause();
         }
+        // A restored ride is parked paused: it was either running or already
+        // auto paused when the page went away, and the rider never stopped it.
+        // That pause is the app's doing, not theirs, so auto start picks it back
+        // up on the first turn of the pedals rather than making them press play
+        // to carry on a ride they never ended.
+        if(self.isPaused()) {
+            self.timing = {...self.timing, pausedAutomatically: true};
+        }
     }
     resume() {
         const self = this;
         if(!self.isStarted()) {
-            timer.postMessage('start');
-            xf.dispatch('watch:started');
-
-            xf.dispatch('watch:event', {
-                timestamp: Date.now(),
-                type: EventType.start,
-            });
-
-            this.hasBeenAutoPaused = false;
+            self.startTimer();
         }
     }
     pause() {
         const self = this;
+        // Pause also cancels a wait for the pedals — until the watch is
+        // actually running there is nothing else to stop.
+        self.disarm();
+        if(!self.isStarted()) return;
+
         timer.postMessage('pause');
         xf.dispatch('watch:paused');
 
@@ -236,6 +303,7 @@ class Watch {
     }
     stop() {
         const self = this;
+        self.disarm();
         if(self.isStarted() || self.isPaused()) {
             timer.postMessage('stop');
 
@@ -356,11 +424,11 @@ class Watch {
         if(self.isWorkoutStarted()) {
             const i = self.intervalIndex;
 
-            // Media-player style "prev": if we're more than 5s into the current
-            // interval, restart the current interval; otherwise (within the
-            // first 5s) jump to the start of the previous interval.
+            // Media-player style "prev": if we're more than the grace window
+            // into the current interval, restart the current interval;
+            // otherwise (within the window) jump to the start of the previous.
             const elapsedInInterval = (self.lapDuration ?? 0) - (self.lapTime ?? 0);
-            const withinStart       = elapsedInInterval <= 5;
+            const withinStart       = elapsedInInterval <= BACK_TO_PREV_WINDOW_S;
 
             let target = i;
             if(withinStart && (i - 1) >= 0) {
@@ -368,6 +436,8 @@ class Watch {
             }
 
             self.goto(target, 0, 0);
+        } else if(self.isStopped()) {
+            self.seekPending(self.intervalIndex - 1);
         } else {
             xf.dispatch('watch:lap');
             xf.dispatch('watch:lapTime', 0);
@@ -390,7 +460,37 @@ class Watch {
                 self.nextInterval(intervals, i, 0);
                 self.nextStep(intervals, i, 0);
             }
+        } else if(self.isStopped()) {
+            self.seekPending(self.intervalIndex + 1);
         }
+    }
+    // Pre-start prev/next: while the watch is stopped ("waiting to start")
+    // select the interval the workout will start from. Mirrors what
+    // startWorkout() dispatches for its starting interval, but must not go
+    // through nextInterval() — that dispatches 'watch:lap', which would record
+    // a bogus lap (lapStartTime is not set until the watch starts).
+    seekPending(intervalIndex) {
+        const self      = this;
+        const intervals = self.intervals;
+
+        if(!exists(intervals) || !exists(intervals[intervalIndex])) return;
+
+        // A finished session left workoutStatus 'done'; clear it so
+        // startWorkout()'s multiple-workouts guard doesn't see the
+        // pre-selected index as a restored session and refuse to start.
+        if(self.isWorkoutDone()) {
+            xf.dispatch('workout:stopped');
+        }
+
+        const intervalTime = intervals[intervalIndex]?.duration ?? 0;
+        const stepTime     = intervals[intervalIndex]?.steps[0]?.duration ?? 0;
+
+        xf.dispatch('watch:intervalIndex',    intervalIndex);
+        xf.dispatch('watch:stepIndex',        0);
+        xf.dispatch('watch:intervalDuration', intervalTime);
+        xf.dispatch('watch:stepDuration',     stepTime);
+        xf.dispatch('watch:lapTime',          intervalTime);
+        xf.dispatch('watch:stepTime',         stepTime);
     }
     // Seek to an exact point in the workout (used by dragging the progress
     // handle). stepElapsed lets the drop land anywhere inside a step, not just
@@ -456,7 +556,7 @@ class Watch {
 }
 
 // These regs have access to the global db state and can mutate it
-xf.reg('watch:lapDuration',    (time, db) => db.intervalDuration = time);
+xf.reg('watch:intervalDuration', (time, db) => db.intervalDuration = time);
 xf.reg('watch:stepDuration',   (time, db) => db.stepDuration     = time);
 xf.reg('watch:lapTime',        (time, db) => db.lapTime          = time);
 xf.reg('watch:stepTime',       (time, db) => db.stepTime         = time);
@@ -484,7 +584,8 @@ xf.reg('watch:stepIndex',     (index, db) => {
         xf.dispatch('ui:cadence-target-set', 0);
     }
     if(exists(powerTarget)) {
-        xf.dispatch('ui:power-target-set', models.ftp.toAbsolute(powerTarget, db.ftp));
+        xf.dispatch('ui:power-target-set', models.workoutIntensity.apply(
+            db.workoutIntensity ?? 100, models.ftp.toAbsolute(powerTarget, db.ftp)));
         if(!exists(slopeTarget) && !equals(db.mode, ControlMode.erg)) {
             xf.dispatch('ui:mode-set', ControlMode.erg);
         }
@@ -503,6 +604,8 @@ xf.reg('watch:started',   (x, db) => {
 });
 xf.reg('watch:paused',  (x, db) => db.watchStatus = 'paused');
 xf.reg('watch:stopped', (x, db) => db.watchStatus = 'stopped');
+// Play pressed, waiting for the rider to turn the pedals.
+xf.reg('watch:armed',   (x, db) => db.watchArmed = x);
 
 xf.reg('watch:elapsed', models.session.elapsed);
 xf.reg('watch:lap', models.session.lap);

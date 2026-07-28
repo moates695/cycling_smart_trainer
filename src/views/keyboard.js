@@ -61,10 +61,15 @@ function KeyboardControls() {
     let watchStatus = 'stopped';
     xf.sub('db:watchStatus', x => watchStatus = x);
 
+    // Play pressed, waiting on the pedals — the clock has not started, so
+    // watchStatus is still paused/stopped and space has to check this too.
+    let watchArmed = false;
+    xf.sub('db:watchArmed', x => watchArmed = x);
+
     // Modes Inc/Dec
     xf.sub('key:up', e => {
         if(mode === ControlMode.erg) {
-            xf.dispatch('ui:power-target-inc');
+            xf.dispatch('ui:workout-intensity-inc');
         }
         if(mode === ControlMode.resistance) {
             xf.dispatch('ui:resistance-target-inc');
@@ -75,7 +80,7 @@ function KeyboardControls() {
     });
     xf.sub('key:down', e => {
         if(mode === ControlMode.erg) {
-            xf.dispatch('ui:power-target-dec');
+            xf.dispatch('ui:workout-intensity-dec');
         }
         if(mode === ControlMode.resistance) {
             xf.dispatch('ui:resistance-target-dec');
@@ -94,7 +99,9 @@ function KeyboardControls() {
 
     // Watch
     xf.sub('key:space', e => {
-        if(watchStatus === 'paused' || watchStatus === 'stopped') {
+        // Space while waiting for the pedals cancels the wait, matching what
+        // the pause button does in that state.
+        if(!watchArmed && (watchStatus === 'paused' || watchStatus === 'stopped')) {
             xf.dispatch('ui:watchStart');
             xf.dispatch('ui:workoutStart');
         } else {

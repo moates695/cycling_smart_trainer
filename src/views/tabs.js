@@ -39,7 +39,6 @@ class TabGroup extends HTMLElement {
         this.tabClass = this.defaultTabSelector();
         this.tabAttr = this.defaultTabAttr();
         this.prop = this.getAttribute('prop') || '';
-        this.tabs = this.querySelectorAll(this.tabClass);
     }
     defaultTabSelector() { return '.tab'; }
     defaultTabAttr() { return 'tab'; }
@@ -50,6 +49,11 @@ class TabGroup extends HTMLElement {
         document.removeEventListener(`db:${this.prop}`, this.onUpdate);
     }
     onUpdate(param) {
+        // query on each update rather than caching in the constructor: the
+        // constructor runs before the parser has seen this element's children
+        // when the element is defined ahead of parse, which would leave the
+        // list empty and every page stuck on its markup-time class.
+        this.tabs = this.querySelectorAll(this.tabClass);
         this.tabs.forEach(tab => {
             if(this.getId(tab) === param) {
                 tab.classList.add('active');

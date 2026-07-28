@@ -89,43 +89,27 @@ class DataView extends HTMLElement {
 customElements.define('data-view', DataView);
 
 
-class AutoStartCounter extends HTMLElement {
-    constructor() {
-        super();
-        this.isVisible = false;
-    }
+// Shown over the workout profile while the watch is armed — play has been
+// pressed and the ride is waiting on the rider's first turn of the pedals.
+// (Replaces the old 3-2-1 auto-start countdown: there is no fixed count to run
+// down any more, the ride simply starts when they do.)
+class PedalToStart extends HTMLElement {
     connectedCallback() {
         const self = this;
         this.abortController = new AbortController();
         this.signal = { signal: self.abortController.signal };
 
-        xf.sub('ui:autoStartCounter', this.onUpdate.bind(this), this.signal);
+        xf.sub('db:watchArmed', this.onUpdate.bind(this), this.signal);
     }
     disconnectedCallback() {
         this.abortController.abort();
     }
-    onUpdate(value) {
-        if(value === -1) {
-            this.hide();
-        } else {
-            if(!this.isVisible) {
-                this.show();
-            }
-            this.render(value);
-        }
-    }
-    show() {
-        this.classList.add('active');
-    }
-    hide() {
-        this.classList.remove('active');
-    }
-    render(value) {
-        this.textContent = value;
+    onUpdate(armed) {
+        this.classList.toggle('active', !!armed);
     }
 }
 
-customElements.define('auto-start-counter', AutoStartCounter);
+customElements.define('pedal-to-start', PedalToStart);
 
 class ModeLockToggle extends HTMLElement {
     constructor() {
@@ -792,6 +776,37 @@ class PowerTargetControl extends DataView {
 customElements.define('power-target-control', PowerTargetControl);
 
 
+// Home control-bar stepper for workout intensity (%): -/+ nudge by the model's
+// step, and a typed percentage applies on Enter / leaving the field (the
+// input's change event). Out-of-bounds input is clamped by the model, so
+// render unconditionally to snap the field back to the stored value.
+class WorkoutIntensityControl extends PowerTargetControl {
+    postInit() {
+        this.state = models.workoutIntensity.default;
+    }
+    setDefaults() {
+        this.prop = 'db:workoutIntensity';
+        this.selectors = {
+            input: '#workout-intensity-input',
+            inc:   '#workout-intensity-inc',
+            dec:   '#workout-intensity-dec',
+        };
+        this.effects = {
+            inc: 'workout-intensity-inc',
+            dec: 'workout-intensity-dec',
+            set: 'workout-intensity-set',
+        };
+        this.parse = parseInt;
+    }
+    onUpdate(propValue) {
+        this.updateState(propValue);
+        this.render();
+    }
+}
+
+customElements.define('workout-intensity-control', WorkoutIntensityControl);
+
+
 class ResistanceTargetControl extends PowerTargetControl {
     setDefaults() {
         this.prop = 'db:resistanceTarget';
@@ -847,6 +862,13 @@ class PowerValue extends DataView {
     transform(state) {
         this.style = 'color: #F8C73A';
         return Math.round(state);
+    }
+    render() {
+        const text = `${this.transform(this.state)}`;
+        this.textContent = text;
+        // Digit count so CSS can shrink an over-wide reading to fit the space
+        // reserved for it (see .watts-hero--value[data-digits]).
+        this.dataset.digits = `${(text.match(/\d/g) ?? []).length}`;
     }
 }
 
@@ -1278,6 +1300,14 @@ class NavigationStack extends HTMLElement {
                         $view: document.querySelector(`#view--workouts-workouts`),
                         $link: document.querySelector(`#link--workouts-workouts`),
                     },
+                    default: {
+                        $view: document.querySelector(`#view--workouts-default`),
+                        $link: document.querySelector(`#link--workouts-default`),
+                    },
+                    completed: {
+                        $view: document.querySelector(`#view--workouts-completed`),
+                        $link: document.querySelector(`#link--workouts-completed`),
+                    },
                     editor: {
                         $view: document.querySelector(`#view--workouts-editor`),
                         $link: document.querySelector(`#link--workouts-editor`),
@@ -1318,6 +1348,14 @@ class NavigationStack extends HTMLElement {
 
         if(action === 'workouts:workouts') {
             this.switch('workouts', this.tabs.workouts.children);
+            return;
+        }
+        if(action === 'workouts:default') {
+            this.switch('default', this.tabs.workouts.children);
+            return;
+        }
+        if(action === 'workouts:completed') {
+            this.switch('completed', this.tabs.workouts.children);
             return;
         }
         if(action === 'workouts:editor') {
@@ -1658,6 +1696,7 @@ class AutoPause extends DataView {
 
 customElements.define('auto-pause', AutoPause);
 
+// Pedalling starts the ride, and picks it back up after an auto pause.
 class AutoStart extends AutoPause {
     postInit() {
         this.effect  = 'sources';
@@ -1819,7 +1858,7 @@ class CompatibilityCheck extends HTMLElement {
              <a href="https://www.google.com/chrome/" target="_blank">Chrome</a> or
              <a href="https://www.microsoft.com/edge" target="_blank">Edge</a>
              <p>Please note that <b>iOS</b> is NOT supported at all, regardless of browser.</p>
-             <p>For more information visit the project <a href="https://github.com/dvmarinoff/Flux" target="_blank">Page.</a></p>
+             <p>For more information visit the project <a href="https://github.com/moates695/cycling_smart_trainer" target="_blank">Page.</a></p>
          </div>`;
     }
     hide() {

@@ -9,6 +9,7 @@ import './active-list-item.js';
 import './activity-list.js';
 import './workout-graph.js';
 import './watts.js';
+import './watts-settings.js';
 import './moxy-graph.js';
 import './watch.js';
 import './ant-device-scan.js';

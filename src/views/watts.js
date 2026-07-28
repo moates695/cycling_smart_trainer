@@ -12,8 +12,9 @@
 // disconnectedCallback. Pure/DOM-free maths is kept in tiny helpers so it stays
 // readable.
 //
-import { xf, exists, clamp } from '../functions.js';
+import { xf, exists, clamp, last } from '../functions.js';
 import { formatTime } from '../utils.js';
+import { workoutCategoryColor, WORKOUT_CATEGORY_FALLBACK_COLOR } from '../workouts/categories.js';
 
 //
 // Coggan 7-zone model, expressed as %FTP upper bounds + the design's colours.
@@ -48,14 +49,37 @@ function zoneClassByPct(pct) {
     return zoneClasses[i] ?? zoneClasses[zoneClasses.length - 1];
 }
 
+// Gradient stops for the zone colours along a sloped block, so a ramp that
+// climbs through several zones is coloured by the zone it is in at each point
+// rather than by one flat colour. One stop sits at the centre of each run of
+// same-zone steps, which reads solid per zone and blends over about one step.
+// `stepPowers` is in the same unit as `ftp` (watts).
+function rampGradient(stepPowers, ftp) {
+    const n      = stepPowers.length;
+    const colors = stepPowers.map((p) => colorByPct((p / (ftp || 200)) * 100));
+    const stops  = [];
+    for(let i = 0; i < n; i += 1) {
+        // Interior repeats add nothing to the blend — keep run endpoints only.
+        if(colors[i] === colors[i - 1] && colors[i] === colors[i + 1]) continue;
+        stops.push(`${colors[i]} ${(((i + 0.5) / n) * 100).toFixed(1)}%`);
+    }
+    // A single-colour ramp still needs two stops for a valid gradient.
+    if(stops.length < 2) return `${colors[0] ?? '#3b4250'}, ${last(colors) ?? '#3b4250'}`;
+    return stops.join(', ');
+}
+
 // Map a series of numbers to an SVG polyline `points` string within a
 // (0..100 x 0..100) viewBox, clamped so the stroke never clips the edges.
-function toPoints(values, vmin, vmax, x0 = 0, x1 = 100) {
+// `xSpan` is how many samples the x-axis represents: pass a rolling window's
+// capacity so a partly-filled buffer draws across its share of the width and
+// fills in over time, instead of being stretched across the whole plot.
+function toPoints(values, vmin, vmax, x0 = 0, x1 = 100, xSpan = values.length) {
     const n = values.length;
     if(n < 2) return '';
+    const denom = Math.max(1, xSpan - 1);
     const span = (vmax - vmin) || 1;
     return values.map((v, i) => {
-        const x = x0 + (i / (n - 1)) * (x1 - x0);
+        const x = clamp(x0, x1, x0 + (i / denom) * (x1 - x0));
         const y = clamp(2, 98, 100 - ((v - vmin) / span) * 100);
         return `${x.toFixed(2)},${y.toFixed(2)}`;
     }).join(' ');
@@ -120,14 +144,23 @@ class WPerKg extends HTMLElement {
         this.signal = { signal: this.abortController.signal };
         this.power = 0;
         this.weight = 75;
+        this.innerHTML =
+            `<span class="watts-hero--wkg-num">0.00</span>` +
+            `<span class="watts-hero--wkg-unit">W/kg</span>`;
+        this.num = this.querySelector('.watts-hero--wkg-num');
         xf.sub('db:power1s', (v) => { this.power = v; this.render(); }, this.signal);
         xf.sub('db:weight',  (v) => { this.weight = v || 75; this.render(); }, this.signal);
         this.render();
     }
     disconnectedCallback() { this.abortController.abort(); }
     render() {
-        const wkg = this.power / (this.weight || 75);
-        this.textContent = `${wkg.toFixed(2)} W/kg`;
+        const wkg = isFinite(this.power / (this.weight || 75))
+              ? (this.power / (this.weight || 75)) : 0;
+        // Number and unit are separate spans so the number can be right-aligned
+        // in a fixed-width box (see .watts-hero--wkg-num) — otherwise "W/kg"
+        // slides sideways every time the value gains or loses a digit. Double
+        // figures drop a decimal to stay inside that 4-character box.
+        this.num.textContent = wkg < 10 ? wkg.toFixed(2) : wkg.toFixed(1);
     }
 }
 customElements.define('w-per-kg', WPerKg);
@@ -200,6 +233,36 @@ customElements.define('target-adherence', TargetAdherence);
 // zone gradient so the line's colour reflects output. The plot scales 0..170%
 // FTP with dashed 100% / 170% gridlines drawn in CSS by the parent.
 //
+
+// Top of the power-history plot, in %FTP. Must match the gridline offsets in
+// .watts-hist--grid-{top,mid,low}.
+const HIST_MAX_PCT = 170;
+
+// The zone bands a vertical trace is stroked with, top (`maxPct` %FTP) to
+// bottom (0), as `<stop>` markup. Each band gets two stops at its own
+// boundaries so the colours read as discrete zones rather than one smeared
+// blend, and they are derived from `wattsZones` so they cannot drift from the
+// zone model the chip, gauge and profile bars use. Shared by the power-history
+// graph and the workout profile's recorded-power line, which have different
+// ceilings — hence the parameter.
+function zoneGradientStops(maxPct) {
+    const top   = maxPct > 0 ? maxPct : HIST_MAX_PCT;
+    const stops = [];
+    let upper = top;
+    // wattsZones runs low→high; walk it high→low so offset 0 is the top.
+    for(let i = wattsZones.length - 1; i >= 0; i -= 1) {
+        const lower = i === 0 ? 0 : wattsZones[i - 1].max;
+        if(lower >= top) continue; // band sits entirely above the plot
+        const from = (top - Math.min(upper, top)) / top;
+        const to   = (top - lower) / top;
+        const color = wattsZones[i].color;
+        stops.push(`<stop offset="${from.toFixed(4)}" stop-color="${color}"/>`);
+        stops.push(`<stop offset="${to.toFixed(4)}" stop-color="${color}"/>`);
+        upper = lower;
+    }
+    return stops.join('');
+}
+
 let pwrGradSeq = 0;
 class PowerHistoryGraph extends HTMLElement {
     connectedCallback() {
@@ -228,18 +291,17 @@ class PowerHistoryGraph extends HTMLElement {
             <div class="watts-hist--plot">
                 <div class="watts-hist--grid watts-hist--grid-top"><span>170%</span></div>
                 <div class="watts-hist--grid watts-hist--grid-mid"><span>100%</span></div>
+                <div class="watts-hist--grid watts-hist--grid-low"><span>50%</span></div>
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none">
                     <defs>
-                        <linearGradient id="${this.gradId}" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0"    stop-color="#a855f7"/>
-                            <stop offset="0.10" stop-color="#a855f7"/>
-                            <stop offset="0.21" stop-color="#ef4444"/>
-                            <stop offset="0.34" stop-color="#f97316"/>
-                            <stop offset="0.43" stop-color="#eab308"/>
-                            <stop offset="0.52" stop-color="#22c55e"/>
-                            <stop offset="0.62" stop-color="#3d8bfd"/>
-                            <stop offset="0.82" stop-color="#3b4250"/>
-                            <stop offset="1"    stop-color="#3b4250"/>
+                        <!-- userSpaceOnUse pins the zone bands to the plot's own
+                             0..170% FTP scale. The default (objectBoundingBox)
+                             stretches them over the *stroke's bounding box*, so
+                             a flat 150 W trace was painted with the whole
+                             purple→grey ramp instead of its one zone colour. -->
+                        <linearGradient id="${this.gradId}" gradientUnits="userSpaceOnUse"
+                                        x1="0" y1="0" x2="0" y2="100">
+                            ${zoneGradientStops(HIST_MAX_PCT)}
                         </linearGradient>
                     </defs>
                     <polyline fill="none" stroke="url(#${this.gradId})" stroke-width="2"
@@ -266,8 +328,11 @@ class PowerHistoryGraph extends HTMLElement {
         if(!this.line) return;
         const view = this.buffer.slice(-this.window);
         // top of the plot = 170% FTP so the dashed gridlines line up.
-        const vmax = (this.ftp || 200) * 1.7;
-        this.line.setAttribute('points', toPoints(view, 0, vmax));
+        const vmax = (this.ftp || 200) * (HIST_MAX_PCT / 100);
+        // x is scaled by the *window*, not by how many samples we happen to
+        // have, so the trace grows in from the left at 1 px/sec of real time
+        // rather than being re-stretched across the plot on every tick.
+        this.line.setAttribute('points', toPoints(view, 0, vmax, 0, 100, this.window));
     }
 }
 customElements.define('power-history-graph', PowerHistoryGraph);
@@ -315,12 +380,12 @@ class FtpGauge extends HTMLElement {
         this.power = 0;
         this.ftp = 200;
         this.innerHTML = `
-            <span class="watts-gauge--top">170%</span>
+            <span class="watts-gauge--top">170</span>
             <div class="watts-gauge--bar">
                 <div class="watts-gauge--marker"></div>
                 <div class="watts-gauge--value">0%</div>
             </div>
-            <span class="watts-gauge--bottom">0%</span>
+            <span class="watts-gauge--bottom">0</span>
             <span class="watts-gauge--caption">% FTP</span>`;
         this.marker = this.querySelector('.watts-gauge--marker');
         this.valueEl = this.querySelector('.watts-gauge--value');
@@ -369,18 +434,7 @@ customElements.define('time-left', TimeLeft);
 // <workout-category> — the current workout's category label (e.g. "VO2 Max"),
 // coloured by a simple category→zone-colour map, used in the Home top bar.
 //
-const categoryColor = {
-    'VO2 Max':    '#f97316',
-    'VO2':        '#f97316',
-    'HIIT':       '#ef4444',
-    'Anaerobic':  '#ef4444',
-    'Threshold':  '#eab308',
-    'Sweet Spot': '#22c55e',
-    'Tempo':      '#22c55e',
-    'Base':       '#3d8bfd',
-    'Endurance':  '#3d8bfd',
-    'Recovery':   '#3b4250',
-};
+const categoryColor = workoutCategoryColor;
 class WorkoutCategory extends HTMLElement {
     connectedCallback() {
         this.abortController = new AbortController();
@@ -388,7 +442,7 @@ class WorkoutCategory extends HTMLElement {
         xf.sub('db:workout', (w) => {
             const cat = w?.meta?.category ?? '';
             this.textContent = cat;
-            this.style.color = categoryColor[cat] ?? '#8b93a3';
+            this.style.color = categoryColor[cat] ?? WORKOUT_CATEGORY_FALLBACK_COLOR;
             this.style.display = cat ? '' : 'none';
         }, this.signal);
     }
@@ -396,10 +450,49 @@ class WorkoutCategory extends HTMLElement {
 }
 customElements.define('workout-category', WorkoutCategory);
 
+//
+// <profile-avatar> — top-bar account button. Shows "?" when signed out and the
+// account's first letter when signed in (the backend only knows an email, so
+// that's the letter shown). Click opens Settings → Account.
+//
+class ProfileAvatar extends HTMLElement {
+    connectedCallback() {
+        this.abortController = new AbortController();
+        this.signal = { signal: this.abortController.signal };
+        this.signedIn = false;
+        this.email = '';
+        xf.sub('db:authState', this.onAuthState.bind(this), this.signal);
+        xf.sub('db:accountEmail', this.onEmail.bind(this), this.signal);
+        this.addEventListener('pointerup', this.onEffect.bind(this), this.signal);
+        this.render();
+    }
+    disconnectedCallback() { this.abortController.abort(); }
+    onAuthState(state) {
+        this.signedIn = state === ':password:profile';
+        this.render();
+    }
+    onEmail(email) {
+        this.email = email ?? '';
+        this.render();
+    }
+    onEffect() {
+        xf.dispatch('ui:page-set', 'settings');
+        xf.dispatch('action:nav', 'settings:profile');
+    }
+    render() {
+        const known = this.signedIn && this.email.length > 0;
+        this.textContent = known ? this.email[0].toUpperCase() : '?';
+        this.classList.toggle('is-signed-in', known);
+    }
+}
+customElements.define('profile-avatar', ProfileAvatar);
+
 export {
     wattsZones,
     zoneByPct,
     zoneClassByPct,
     colorByPct,
+    rampGradient,
+    zoneGradientStops,
     toPoints,
 };

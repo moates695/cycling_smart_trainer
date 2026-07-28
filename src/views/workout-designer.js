@@ -15,13 +15,13 @@
 //                               (squishes/grows the immediate left neighbour)
 
 import { xf, exists, first, empty } from '../functions.js';
-import { models } from '../models/models.js';
 import { uuid } from '../storage/uuid.js';
 import { formatTime } from '../utils.js';
 import {
     clamp,
     snapDuration,
     snapPower,
+    powerToZoneIndex,
     Segment,
     segmentsFromIntervals,
     segmentsToZwo,
@@ -29,6 +29,7 @@ import {
     MIN_DURATION,
     DURATION_SNAP,
 } from '../workouts/designer-model.js';
+import { workoutCategories, DEFAULT_WORKOUT_CATEGORY } from '../workouts/categories.js';
 
 // --- geometry -------------------------------------------------------------
 
@@ -88,11 +89,10 @@ function niceTickSeconds(pxPerSec) {
     return steps[steps.length - 1];
 }
 
-// categories used by the built-in library (workouts.js) + the zwo.js default.
-// The select also picks up any extra categories found in the user's library.
-const CATEGORIES = [
-    'Base', 'Recovery', 'Sweet Spot', 'Threshold', 'VO2 Max', 'HIIT', 'Test', 'Custom',
-];
+// The enumerable category names live in workouts/categories.js (the source of
+// truth). The select also picks up any extra categories found in the user's
+// library (e.g. imported .ZWO with a non-standard <category>).
+const CATEGORIES = workoutCategories;
 
 // --- component ------------------------------------------------------------
 
@@ -104,7 +104,7 @@ class WorkoutDesigner extends HTMLElement {
         this.meta = {
             name: 'New Workout',
             author: 'Auuki',
-            category: 'Sweet Spot',
+            category: DEFAULT_WORKOUT_CATEGORY,
             description: '',
         };
         this.ftp = 200;
@@ -127,7 +127,7 @@ class WorkoutDesigner extends HTMLElement {
         this.abortController = new AbortController();
         this.signal = { signal: this.abortController.signal };
 
-        this.injectStyles();
+        // WATTS styling lives in css/watts-editor.css (linked from index.html)
         this.innerHTML = this.template();
 
         this.$svg = this.querySelector('.wd-svg');
@@ -139,7 +139,7 @@ class WorkoutDesigner extends HTMLElement {
         this.on('.wd-clear', 'click', () => this.clearAll());
         this.on('.wd-undo', 'click', () => this.undo());
         this.on('.wd-redo', 'click', () => this.redo());
-        this.on('.wd-fit', 'click', () => this.fitToWidth());
+        this.on('.wd-fit', 'click', () => { this._userZoomed = false; this.fitToWidth(); });
         this.on('.wd-zoom-in', 'click', () => this.zoom(1.4));
         this.on('.wd-zoom-out', 'click', () => this.zoom(1 / 1.4));
         this.on('.wd-save', 'click', () => this.save());
@@ -197,11 +197,26 @@ class WorkoutDesigner extends HTMLElement {
                 Segment({ duration: 300, powerStart: 0.5 }),
             ];
         }
+
+        // keep the profile filling the card width until the user zooms
+        // manually (the editor sits in a display:none sub-tab, so the first
+        // real layout happens when the tab is shown — the observer catches it)
+        this._userZoomed = false;
+        if(typeof ResizeObserver !== 'undefined') {
+            this._resizeObserver = new ResizeObserver(() => {
+                const wrap = this.querySelector('.wd-chart-wrap');
+                if(!wrap || wrap.clientWidth === 0 || this._userZoomed) return;
+                this.fitToWidth();
+            });
+            this._resizeObserver.observe(this.querySelector('.wd-chart-wrap'));
+        }
+
         this.render();
     }
 
     disconnectedCallback() {
         this.abortController.abort();
+        if(this._resizeObserver) this._resizeObserver.disconnect();
         window.removeEventListener('pointermove', this._onMove);
         window.removeEventListener('pointerup', this._onUp);
     }
@@ -361,7 +376,7 @@ class WorkoutDesigner extends HTMLElement {
                 ? copyName(meta.name ?? 'Workout', this.libraryNames())
                 : (meta.name ?? 'Workout'),
             author: meta.author ?? 'Auuki',
-            category: meta.category ?? 'Sweet Spot',
+            category: meta.category ?? DEFAULT_WORKOUT_CATEGORY,
             description: meta.description ?? '',
         };
         this.renderCategorySelect();
@@ -373,6 +388,8 @@ class WorkoutDesigner extends HTMLElement {
         // a copy is unsaved (dirty); an in-place edit matches its saved form.
         this.dirty = asCopy;
         this.render();
+        // refit the graph to the new total duration (unless the user zoomed)
+        if(!this._userZoomed) requestAnimationFrame(() => this.fitToWidth());
     }
 
     // "Edit"/"Copy" pressed on a workout row: load it here and reveal the editor.
@@ -460,6 +477,7 @@ class WorkoutDesigner extends HTMLElement {
     }
 
     zoom(factor) {
+        this._userZoomed = true;
         this.geometry.setPxPerSec(this.geometry.getPxPerSec() * factor);
         this.render();
     }
@@ -748,11 +766,6 @@ class WorkoutDesigner extends HTMLElement {
 
     // --- rendering --------------------------------------------------------
 
-    zoneColor(frac) {
-        const zone = models.ftp.percentageToZone(frac);
-        return models.ftp.zoneToColor(zone);
-    }
-
     render() {
         if(!this.$svg) return;
         const g = this.geometry;
@@ -772,13 +785,13 @@ class WorkoutDesigner extends HTMLElement {
 
     gridSvg(g, width) {
         const out = [];
-        // horizontal power gridlines — labelled with both %FTP and watts
+        // horizontal dashed power gridlines, labelled "150% · 300W" style
+        // (combined %FTP + watts sitting just above each line, per the design)
         [0.5, 1.0, 1.5].forEach((frac) => {
             if(frac > g.yMaxFrac) return;
             const y = g.yAt(frac);
             out.push(`<line class="wd-grid" x1="${g.padL}" y1="${y}" x2="${width - g.padR}" y2="${y}"/>`);
-            out.push(`<text class="wd-axis" x="${g.padL - 6}" y="${y - 1}" text-anchor="end">${Math.round(frac * 100)}%</text>`);
-            out.push(`<text class="wd-axis-w" x="${g.padL - 6}" y="${y + 9}" text-anchor="end">${this.watts(frac)}W</text>`);
+            out.push(`<text class="wd-axis" x="${g.padL + 8}" y="${y - 4}">${Math.round(frac * 100)}% · ${this.watts(frac)}W</text>`);
         });
 
         const base = g.yBase();
@@ -791,6 +804,8 @@ class WorkoutDesigner extends HTMLElement {
             out.push(`<text class="wd-axis wd-tick-label" x="${x}" y="${base + 14}" text-anchor="middle">${formatTime({ value: t, format: 'mm:ss' })}</text>`);
         }
 
+        // L-shaped plot border (left + bottom), as in the design
+        out.push(`<line class="wd-axis-line" x1="${g.padL}" y1="${g.padT}" x2="${g.padL}" y2="${base}"/>`);
         out.push(`<line class="wd-axis-line" x1="${g.padL}" y1="${base}" x2="${width - g.padR}" y2="${base}"/>`);
         return out.join('');
     }
@@ -799,6 +814,7 @@ class WorkoutDesigner extends HTMLElement {
         let x = g.padL;
         const base = g.yBase();
         const bodies = [];
+        const labels = [];
         let sel = null; // geometry of the selected bar, drawn last so it sits on top
 
         this.segments.forEach((seg, index) => {
@@ -807,17 +823,32 @@ class WorkoutDesigner extends HTMLElement {
             const yS = g.yAt(seg.powerStart);
             const yE = g.yAt(seg.powerEnd);
             const selected = seg.id === this.selectedId;
-            const avg = (seg.powerStart + seg.powerEnd) / 2;
-            const fill = this.zoneColor(avg);
-            const points = `${x0},${base} ${x0},${yS} ${x1},${yE} ${x1},${base}`;
+            // colour by the block's peak power, so ramps take the zone they
+            // finish in (matches the design's warmup/cooldown colouring)
+            const zone = powerToZoneIndex(Math.max(seg.powerStart, seg.powerEnd));
+            // small visual gap between neighbouring bars (drag maths still uses
+            // the true x0/x1 edges)
+            const inset = (x1 - x0) > 8 ? 1.5 : 0;
+            const points = `${x0 + inset},${base} ${x0 + inset},${yS} ${x1 - inset},${yE} ${x1 - inset},${base}`;
 
-            bodies.push(`<polygon class="wd-bar${selected ? ' wd-selected' : ''}" data-role="body" data-id="${seg.id}" points="${points}" fill="${fill}"/>`);
+            bodies.push(`<polygon class="wd-bar wd-z${zone}${selected ? ' wd-selected' : ''}" data-role="body" data-id="${seg.id}" points="${points}"/>`);
+
+            // "176W · 10:00" label above the block, when it is wide enough
+            if((x1 - x0) >= 56) {
+                const steady = Math.abs(seg.powerStart - seg.powerEnd) < 0.001;
+                const watts = steady
+                    ? `${this.watts(seg.powerStart)}W`
+                    : `${this.watts(seg.powerStart)}–${this.watts(seg.powerEnd)}W`;
+                const dur = formatTime({ value: Math.round(seg.duration), format: 'mm:ss' });
+                const yLab = Math.max(g.padT + 9, Math.min(yS, yE) - 6);
+                labels.push(`<text class="wd-bar-label" x="${(x0 + x1) / 2}" y="${yLab}" text-anchor="middle">${watts} · ${dur}</text>`);
+            }
 
             if(selected) sel = { seg, index, x0, x1, yS, yE, points };
             x = x1;
         });
 
-        if(!sel) return bodies.join('');
+        if(!sel) return bodies.join('') + labels.join('');
 
         // second pass: the selected bar's outline + handles, painted over every
         // body polygon so an adjacent block can never cover its edges/corners.
@@ -836,7 +867,7 @@ class WorkoutDesigner extends HTMLElement {
         handles.push(`<circle class="wd-handle" data-role="power-start" data-id="${seg.id}" cx="${x0}" cy="${yS}" r="6"/>`);
         handles.push(`<circle class="wd-handle" data-role="power-end" data-id="${seg.id}" cx="${x1}" cy="${yE}" r="6"/>`);
 
-        return bodies.join('') + handles.join('');
+        return bodies.join('') + labels.join('') + handles.join('');
     }
 
     updateSummary() {
@@ -844,16 +875,17 @@ class WorkoutDesigner extends HTMLElement {
         const total = this.geometry.totalDuration(this.segments);
         const count = this.segments.length;
         const unsaved = this.dirty ? ' · ● unsaved' : '';
+        // rendered uppercase via CSS, "3 BLOCKS · 20:00 · FTP 200 W"
         this.$summary.textContent =
-            `${count} block${count === 1 ? '' : 's'} · ${formatTime({ value: total, format: 'mm:ss' })} · FTP ${this.ftp}W${unsaved}`;
+            `${count} block${count === 1 ? '' : 's'} · ${formatTime({ value: total, format: 'mm:ss' })} · FTP ${this.ftp} W${unsaved}`;
     }
 
     renderList() {
         if(!this.$list) return;
         if(empty(this.segments)) {
             this.$list.innerHTML = `
-                <p class="wd-hint">No blocks yet. Use <strong>+ Add block</strong> below, or <strong>Load workout…</strong> to start from a saved one.</p>
-                <button class="wd-list-add btn" data-act="add">+ Add block</button>`;
+                <p class="wd-hint">No blocks yet. Use <strong>+ Add Block</strong> below, or <strong>Load…</strong> to start from a saved workout.</p>
+                <button class="wd-list-add" data-act="add">+ Add Block</button>`;
             return;
         }
         const rows = this.segments.map((seg, i) => {
@@ -862,157 +894,79 @@ class WorkoutDesigner extends HTMLElement {
             const startW = this.watts(seg.powerStart);
             const endW = this.watts(seg.powerEnd);
             return `
-            <tr class="wd-lrow${selected ? ' wd-lsel' : ''}" data-id="${seg.id}">
-                <td class="wd-lidx">${i + 1}</td>
-                <td><input class="wd-li" data-f="duration" data-id="${seg.id}" value="${durStr}"/></td>
-                <td class="wd-lpow">
+            <div class="wd-lrow${selected ? ' wd-lsel' : ''}" data-id="${seg.id}">
+                <div class="wd-lidx">${i + 1}</div>
+                <div><input class="wd-li" data-f="duration" data-id="${seg.id}" value="${durStr}"/></div>
+                <div class="wd-lpow">
                     <input class="wd-li" type="number" step="1" data-f="pstart" data-id="${seg.id}" value="${Math.round(seg.powerStart * 100)}"/>
                     <span class="wd-unit">% · ${startW}W</span>
-                </td>
-                <td class="wd-lpow">
+                </div>
+                <div class="wd-lpow">
                     <input class="wd-li" type="number" step="1" data-f="pend" data-id="${seg.id}" value="${Math.round(seg.powerEnd * 100)}"/>
                     <span class="wd-unit">% · ${endW}W</span>
-                </td>
-                <td><input class="wd-li" type="number" step="1" data-f="cadence" data-id="${seg.id}" value="${exists(seg.cadence) ? seg.cadence : ''}" placeholder="—"/></td>
-                <td><input class="wd-li" type="number" step="0.5" data-f="slope" data-id="${seg.id}" value="${exists(seg.slope) ? seg.slope : ''}" placeholder="—"/></td>
-                <td class="wd-lactions">
+                </div>
+                <div><input class="wd-li" type="number" step="1" data-f="cadence" data-id="${seg.id}" value="${exists(seg.cadence) ? seg.cadence : ''}" placeholder="—"/></div>
+                <div><input class="wd-li" type="number" step="0.5" data-f="slope" data-id="${seg.id}" value="${exists(seg.slope) ? seg.slope : ''}" placeholder="—"/></div>
+                <div class="wd-lactions">
                     <button data-act="up" data-id="${seg.id}" title="Move up" ${i === 0 ? 'disabled' : ''}>↑</button>
                     <button data-act="down" data-id="${seg.id}" title="Move down" ${i === this.segments.length - 1 ? 'disabled' : ''}>↓</button>
                     <button data-act="dup" data-id="${seg.id}" title="Duplicate">⧉</button>
                     <button data-act="del" data-id="${seg.id}" title="Delete">✕</button>
-                </td>
-            </tr>`;
+                </div>
+            </div>`;
         }).join('');
 
         this.$list.innerHTML = `
-            <table class="wd-table">
-                <thead>
-                    <tr>
-                        <th>#</th><th>Duration</th><th>Start</th><th>End</th>
-                        <th>Cadence</th><th>Slope</th><th></th>
-                    </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-            </table>
-            <button class="wd-list-add btn" data-act="add">+ Add block</button>`;
+            <div class="wd-lhead">
+                <div>#</div><div>Duration</div><div>Start</div><div>End</div>
+                <div>Cadence</div><div>Slope</div><div></div>
+            </div>
+            ${rows}
+            <button class="wd-list-add" data-act="add">+ Add Block</button>`;
     }
 
     template() {
         return `
         <div class="wd-cont">
+            <div class="wd-head">
+                <h2 class="wd-title">Workout Editor</h2>
+                <div class="wd-head-actions">
+                    <button class="wd-load btn" title="Replace the current design with a saved workout">Load…</button>
+                    <button class="wd-clear btn">Clear</button>
+                </div>
+            </div>
+
             <div class="wd-meta">
                 <label>Name<input class="wd-meta-name" type="text"/></label>
                 <label>Category<select class="wd-meta-category"></select></label>
                 <label class="wd-meta-desc-wrap">Description<input class="wd-meta-description" type="text"/></label>
             </div>
 
-            <div class="wd-toolbar">
-                <button class="wd-load btn btn--danger" title="Replace the current design with a saved workout">Load workout…</button>
-                <button class="wd-clear btn">Clear</button>
-                <span class="wd-spacer"></span>
-                <button class="wd-undo btn" title="Undo (Ctrl+Z)">↶ Undo</button>
-                <button class="wd-redo btn" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
-                <button class="wd-fit btn" title="Zoom to fit">Fit</button>
-                <button class="wd-zoom-out btn" title="Zoom out">−</button>
-                <button class="wd-zoom-in btn" title="Zoom in">+</button>
+            <div class="wd-card wd-chart-card">
+                <div class="wd-tools">
+                    <button class="wd-undo btn" title="Undo (Ctrl+Z)">↶</button>
+                    <button class="wd-redo btn" title="Redo (Ctrl+Shift+Z)">↷</button>
+                    <button class="wd-zoom-out btn" title="Zoom out">−</button>
+                    <button class="wd-zoom-in btn" title="Zoom in">+</button>
+                    <button class="wd-fit btn" title="Zoom to fit">FIT</button>
+                </div>
+                <div class="wd-chart-wrap">
+                    <svg class="wd-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+                </div>
+                <div class="wd-summary"></div>
             </div>
 
-            <div class="wd-chart-wrap">
-                <svg class="wd-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div class="wd-card wd-list-card">
+                <div class="wd-list"></div>
             </div>
-
-            <div class="wd-summary"></div>
-            <div class="wd-list"></div>
 
             <div class="wd-footer">
-                <button class="wd-save btn btn--primary">Save to library</button>
+                <button class="wd-save btn btn--primary">Save to Library</button>
                 <button class="wd-download btn">Download .zwo</button>
             </div>
         </div>`;
     }
 
-    injectStyles() {
-        if(document.getElementById('workout-designer-styles')) return;
-        const style = document.createElement('style');
-        style.id = 'workout-designer-styles';
-        style.textContent = `
-        workout-designer { display: block; }
-        .wd-cont { padding: 1em; max-width: 1100px; margin: 0 auto; }
-        .wd-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75em; margin-bottom: 1em; }
-        .wd-meta .wd-meta-desc-wrap { grid-column: 1 / -1; }
-        .wd-meta label { display: flex; flex-direction: column; font-size: 0.8em; opacity: 0.85; gap: 0.25em; }
-        .wd-meta input, .wd-meta select { padding: 0.4em 0.5em; border-radius: 6px; border: 1px solid var(--border-color, #444);
-            background: var(--input-bg, #1c1c1e); color: inherit; font-size: 1rem; }
-        .wd-toolbar { display: flex; align-items: center; gap: 0.5em; margin-bottom: 0.5em; flex-wrap: wrap; }
-        .wd-toolbar .wd-spacer { flex: 1; }
-        .wd-chart-wrap { overflow-x: auto; border: 1px solid var(--border-color, #333); border-radius: 8px;
-            background: var(--surface, #161618); }
-        .wd-svg { display: block; touch-action: none; }
-        .wd-bar { cursor: pointer; opacity: 0.85; stroke: rgba(0,0,0,0.25); stroke-width: 1; }
-        .wd-bar:hover { opacity: 1; }
-        .wd-bar.wd-selected { opacity: 1; }
-        .wd-selected-outline { stroke: #fff; stroke-width: 2; pointer-events: none; }
-        .wd-edge { fill: rgba(255,255,255,0.001); cursor: ew-resize; }
-        .wd-edge-top { stroke: rgba(255,255,255,0.001); stroke-width: 12; cursor: ns-resize; pointer-events: stroke; }
-        .wd-handle { fill: #fff; stroke: #328AFF; stroke-width: 2; cursor: ns-resize; }
-        .wd-grid { stroke: rgba(255,255,255,0.08); stroke-width: 1; }
-        .wd-tick { stroke: rgba(255,255,255,0.05); stroke-width: 1; }
-        .wd-tick-label { opacity: 0.55; }
-        .wd-axis-line { stroke: rgba(255,255,255,0.25); stroke-width: 1; }
-        .wd-axis { fill: rgba(255,255,255,0.55); font-size: 10px; }
-        .wd-axis-w { fill: rgba(255,255,255,0.35); font-size: 9px; }
-        .wd-summary { margin: 0.6em 0; font-size: 0.85em; opacity: 0.8; }
-        .wd-summary.wd-flash { opacity: 1; color: #57C057; font-weight: 600; }
-        .wd-list { margin-top: 0.25em; }
-        .wd-hint { font-size: 0.85em; opacity: 0.7; max-width: 55ch; }
-        .wd-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        .wd-table th { text-align: left; font-weight: 600; opacity: 0.6; font-size: 0.75em;
-            text-transform: uppercase; letter-spacing: 0.03em; padding: 0.35em 0.5em; }
-        .wd-table td { padding: 0.3em 0.5em; border-top: 1px solid var(--border-color, #2a2a2e); vertical-align: middle; }
-        .wd-lrow { cursor: pointer; }
-        .wd-lrow:hover { background: rgba(255,255,255,0.03); }
-        .wd-lrow.wd-lsel { background: rgba(50,138,255,0.12); }
-        .wd-lidx { opacity: 0.5; width: 1.5em; text-align: right; }
-        .wd-table input { width: 4.2em; padding: 0.3em 0.4em; border-radius: 5px; border: 1px solid var(--border-color, #444);
-            background: var(--input-bg, #1c1c1e); color: inherit; font-size: 0.9rem; }
-        .wd-lpow { white-space: nowrap; }
-        .wd-lpow .wd-unit { font-size: 0.72em; opacity: 0.55; margin-left: 0.35em; }
-        .wd-lactions { white-space: nowrap; text-align: right; }
-        .wd-lactions button { background: transparent; border: 1px solid var(--border-color, #444); color: inherit;
-            border-radius: 5px; cursor: pointer; padding: 0.15em 0.45em; margin-left: 0.2em; font-size: 0.85rem; }
-        .wd-lactions button:hover:not(:disabled) { border-color: #666; }
-        .wd-lactions button:disabled { opacity: 0.3; cursor: default; }
-        .wd-list-add { margin-top: 0.6em; }
-        .wd-footer { display: flex; gap: 0.5em; margin-top: 1.25em; }
-        .wd-cont .btn { padding: 0.45em 0.8em; border-radius: 6px; border: 1px solid var(--border-color, #444);
-            background: var(--btn-bg, #2a2a2e); color: inherit; cursor: pointer; font-size: 0.9rem; }
-        .wd-cont .btn:hover { border-color: #666; }
-        .wd-cont .btn:disabled { opacity: 0.4; cursor: default; }
-        .wd-cont .btn:disabled:hover { border-color: var(--border-color, #444); }
-        .wd-cont .btn--primary { background: #328AFF; border-color: #328AFF; color: #fff; }
-        .wd-cont .btn--danger { background: #C0392B; border-color: #C0392B; color: #fff; }
-        .wd-cont .btn--danger:hover { background: #d84636; border-color: #d84636; }
-        .wd-modal-backdrop { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.55);
-            display: flex; align-items: center; justify-content: center; padding: 1em; }
-        .wd-modal { background: var(--surface, #1c1c1e); border: 1px solid var(--border-color, #333);
-            border-radius: 10px; width: min(420px, 100%); max-height: 80vh; display: flex; flex-direction: column; }
-        .wd-modal-head { padding: 0.9em 1em; font-weight: 600; border-bottom: 1px solid var(--border-color, #2a2a2e); }
-        .wd-modal-warn { color: #E7776B; font-weight: 500; font-size: 0.85em; }
-        .wd-modal-body { padding: 0.9em 1em; font-size: 0.9em; opacity: 0.85; line-height: 1.4; }
-        .wd-guard-foot { display: flex; gap: 0.5em; justify-content: flex-end; }
-        .wd-modal-list { padding: 0.6em; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35em; }
-        .wd-pick { display: flex; justify-content: space-between; align-items: center; gap: 1em; text-align: left;
-            padding: 0.6em 0.75em; border-radius: 6px; border: 1px solid var(--border-color, #444);
-            background: var(--btn-bg, #2a2a2e); color: inherit; cursor: pointer; font-size: 0.95rem; }
-        .wd-pick:hover { border-color: #C0392B; background: rgba(192,57,43,0.12); }
-        .wd-pick-dur { opacity: 0.55; font-size: 0.85em; font-variant-numeric: tabular-nums; }
-        .wd-modal-foot { padding: 0.75em 1em; border-top: 1px solid var(--border-color, #2a2a2e); text-align: right; }
-        @media (max-width: 640px) {
-            .wd-meta { grid-template-columns: 1fr 1fr; }
-            .wd-table { font-size: 0.78rem; }
-        }`;
-        document.head.appendChild(style);
-    }
 }
 
 customElements.define('workout-designer', WorkoutDesigner);

@@ -1,0 +1,37 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-watts
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.WATTS_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "170.64.227.206 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII7cJPIInrWjm+a2w92HBrbAyj+/8ZEBXtPgf3ja+/wy" > ~/.ssh/known_hosts
+
+      # The deploy key is locked to rrsync rooted at /var/www/watts, so the
+      # destination path is "/" relative to that root.
+      - name: Publish to watts.moates.com.au
+        run: rsync -az --delete --exclude '*.map' -e "ssh -i $HOME/.ssh/deploy_key" dist/ root@170.64.227.206:/

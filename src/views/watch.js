@@ -29,8 +29,12 @@ class Watch extends HTMLElement {
 
         this.renderInit(this.dom);
 
+        this.status = 'stopped';
+        this.armed  = false;
+
         xf.sub(`db:watchStatus`, this.onWatchStatus.bind(this), this.signal);
         xf.sub(`db:workoutStatus`, this.onWorkoutStatus.bind(this), this.signal);
+        xf.sub(`db:watchArmed`, this.onArmed.bind(this), this.signal);
         xf.sub(`db:lock`, this.onLock.bind(this), this.signal);
     }
     disconnectedCallback() {
@@ -47,9 +51,20 @@ class Watch extends HTMLElement {
     onSave(e)  { xf.dispatch('ui:activity:save'); }
     onWorkoutStart(e) { xf.dispatch('ui:workoutStart'); }
     onWatchStatus(status) {
+        this.status = status;
+        // While armed the transport shows the waiting state instead — the clock
+        // has not started, so watchStatus is still paused or stopped.
+        if(this.armed) return;
         if(status === 'started') { this.renderStarted(this.dom); }
         if(status === 'paused')  { this.renderPaused(this.dom);  }
         if(status === 'stopped') { this.renderStopped(this.dom); }
+    }
+    // Play was pressed and the ride is waiting on the pedals. Show pause, which
+    // cancels the wait, and mark it so the control bar can say it is waiting.
+    onArmed(armed) {
+        this.armed = !!armed;
+        if(this.armed) { this.renderArmed(this.dom); }
+        else           { this.onWatchStatus(this.status); }
     }
     onWorkoutStatus(status) {
         if(status === 'started') { this.renderWorkoutStarted(this.dom); }
@@ -73,14 +88,29 @@ class Watch extends HTMLElement {
         dom.stop.style.display = 'grid';
         dom.stop.classList.toggle('is-disabled', !enabled);
     };
+    // Back/next stay visible in every state: while stopped the watch is
+    // "waiting to start" (same as paused), and prev/next pre-select the
+    // interval the workout will start from.
     renderInit(dom) {
         dom.pause.style.display   = 'none';
         dom.save.style.display    = 'none';
-        dom.back.style.display    = 'none';
-        dom.forward.style.display = 'none';
+        dom.back.style.display    = 'grid';
+        dom.forward.style.display = 'grid';
+        this.setStopEnabled(dom, false);
+    };
+    // Waiting for the rider: pause is the way out, and nothing is running to
+    // stop or save yet.
+    renderArmed(dom) {
+        dom.start.style.display   = 'none';
+        dom.save.style.display    = 'none';
+        dom.pause.style.display   = 'grid';
+        dom.pause.classList.add('is-armed');
+        dom.back.style.display    = 'grid';
+        dom.forward.style.display = 'grid';
         this.setStopEnabled(dom, false);
     };
     renderStarted(dom) {
+        dom.pause.classList.remove('is-armed');
         dom.start.style.display   = 'none';
         dom.save.style.display    = 'none';
         dom.pause.style.display   = 'grid';
@@ -89,6 +119,7 @@ class Watch extends HTMLElement {
         this.setStopEnabled(dom, true);
     };
     renderPaused(dom) {
+        dom.pause.classList.remove('is-armed');
         dom.pause.style.display    = 'none';
         dom.start.style.display    = 'grid';
         // Keep back/next available while paused so you can skip segments
@@ -98,9 +129,10 @@ class Watch extends HTMLElement {
         this.setStopEnabled(dom, false);
     };
     renderStopped(dom) {
+        dom.pause.classList.remove('is-armed');
         dom.pause.style.display   = 'none';
-        dom.back.style.display    = 'none';
-        dom.forward.style.display = 'none';
+        dom.back.style.display    = 'grid';
+        dom.forward.style.display = 'grid';
         dom.save.style.display    = 'grid';
         dom.start.style.display   = 'grid';
         this.setStopEnabled(dom, false);

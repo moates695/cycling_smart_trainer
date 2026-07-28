@@ -1,56 +1,291 @@
-import { xf, exists, empty, equals, debounce } from '../functions.js';
+//
+// WATTS overhaul — workout library rows (My Workouts / Default tabs).
+//
+// Each workout renders as a clickable card: a load-selector radio, mini
+// bar-profile thumbnail, name + one-line description, category label,
+// duration, a START pill and a chevron. Clicking the row expands it in place
+// (accordion, one open at a time) to the full segmented profile graph +
+// description + Start Workout. The 3-dot menu keeps the library actions
+// (edit / duplicate / delete for the user's workouts, duplicate for the
+// built-in ones).
+//
+import { xf, exists, empty, equals, first, last } from '../functions.js';
+import { formatTime } from '../utils.js';
 import { models } from '../models/models.js';
-import { intervalsToGraph, courseToGraph, renderInfo } from './workout-graph.js';
+import { courseToGraph } from './workout-graph.js';
+import { zoneClassByPct, rampGradient } from './watts.js';
+import {
+    flattenSteps, shapeSteps, toSegments, rampPolygon,
+} from '../workouts/profile-shape.js';
+import {
+    workoutCategoryColor,
+    WORKOUT_CATEGORY_FALLBACK_COLOR,
+} from '../workouts/categories.js';
 
-const radioOff = `
-        <svg class="radio radio-off">
-            <use href="#icon--radio-off">
-        </svg>`;
+// Interpolated workout text (names, descriptions) comes from user files, so
+// never let it carry markup into innerHTML.
+function esc(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
 
-const radioOn = `
-        <svg class="radio radio-on">
-            <use href="#icon--radio-on">
-        </svg>`;
+// Flatten a workout's intervals into drawable steps:
+// [{duration, watts, pct, pctStart, pctEnd, rampId}] where pct is %FTP.
+//
+// A ramp is stored as a run of short steps (a .zwo <Warmup> expands that way,
+// and exported workouts often write one as a series of short blocks), so drawn
+// literally it becomes a staircase. profile-shape.js marks those runs and gives
+// each step the %FTP of its top edge at its left and right boundary, which lets
+// the profiles below draw a whole run as one smooth slope. Steps outside a run
+// get pctStart === pctEnd and stay ordinary rectangles.
+function workoutToSteps(workout, ftp) {
+    const scale  = 100 / (ftp || 200);
+    const toWatts = (step) => models.ftp.toAbsolute(step.power, ftp) ?? 0;
+    const shaped = shapeSteps(flattenSteps(workout.intervals, toWatts), {ftp});
 
-const options = `
-        <svg class="workout--options-btn control--btn--icon">
-            <use href="#icon--options">
-        </svg>`;
+    return shaped.map((step) => ({
+        duration: step.duration,
+        watts:    step.power,
+        pct:      step.power * scale,
+        pctStart: step.powerStart * scale,
+        pctEnd:   step.powerEnd * scale,
+        rampId:   step.rampId,
+    }));
+}
 
-function workoutTemplate(workout) {
-    let duration = '';
-    if(workout.meta.duration) {
-        duration = `${Math.round(workout.meta.duration / 60)} min`;
-    }
+// Bar height as % of a 0–150% FTP plot (the design's mapping), with a small
+// floor so recovery blocks stay visible.
+function stepToHeight(pct) {
+    return Math.max(6, Math.min(100, (pct / 150) * 100));
+}
+
+// A sloped segment: one element clipped to the run's outline and filled with
+// the zone colours it passes through, so the whole run is a single shape with
+// no seams between its steps.
+function rampSegmentHtml(segment, className, sizing = '') {
+    const polygon = rampPolygon(
+        segment.steps.map((step) => ({
+            duration:   step.duration,
+            powerStart: step.pctStart,
+            powerEnd:   step.pctEnd,
+        })),
+        (pct) => stepToHeight(pct) / 100);
+    // pct values are already %FTP, so an "ftp" of 100 maps them straight through
+    const gradient = rampGradient(segment.steps.map((step) => step.pct), 100);
+
+    return `<div class="${className}"
+                 style="${sizing} clip-path: ${polygon};
+                        background: linear-gradient(90deg, ${gradient});"></div>`;
+}
+
+// mini thumbnail: zone-coloured bars, widths proportional to step duration.
+function miniProfileHtml(steps) {
+    const segments = toSegments(steps);
+    const dense = segments.length > 24 ? ' is-dense' : '';
+    const bars = segments.reduce((acc, segment) => {
+        if(segment.isRamp) {
+            return acc + rampSegmentHtml(segment, 'watts-wmini--ramp',
+                                         `flex-grow: ${Math.max(1, segment.duration)};`);
+        }
+        const step = segment.steps[0];
+        const zone = zoneClassByPct(step.pct);
+        return acc +
+            `<div class="watts-wmini--bar zone-${zone}"
+                  style="flex-grow: ${Math.max(1, step.duration)}; height: ${stepToHeight(step.pct)}%;"></div>`;
+    }, '');
+    return `<div class="watts-wmini${dense}">${bars}</div>`;
+}
+
+// Segment duration at the base of a block, matching the live profile on Home:
+// mm:ss without the leading zero ("02:00" → "2:00"). Only on blocks wide enough
+// for the text to read — narrower ones would overlap their neighbours.
+function durationLabelHtml(duration, widthPct) {
+    if(!exists(duration) || duration <= 0 || widthPct < 2.5) return '';
+    const text = formatTime({value: duration, format: 'mm:ss'}).replace(/^0/, '');
+    return `<span class="watts-wprof--dur">${text}</span>`;
+}
+
+// full profile for the expanded panel: FTP axis (% + W), zone bars with watt
+// labels on the work blocks, per-block durations at the base, and a time axis.
+function fullProfileHtml(steps, ftp, totalDuration) {
+    const axis = [150, 100, 50, 0].map((pct) => {
+        const top = 100 - (pct / 150) * 100;
+        const watts = Math.round((pct / 100) * (ftp || 200));
+        return `<span style="top: ${top}%;"><b>${pct}%</b><i>${watts}W</i></span>`;
+    }).join('');
+
+    const total = totalDuration > 0
+        ? totalDuration
+        : steps.reduce((acc, s) => acc + s.duration, 0);
+    const segments = toSegments(steps);
+    const dense = segments.length > 24 ? ' is-dense' : '';
+
+    const bars = segments.reduce((acc, segment) => {
+        const widthPct = total > 0 ? (segment.duration / total) * 100 : 0;
+
+        if(segment.isRamp) {
+            const from = first(segment.steps);
+            const to   = last(segment.steps);
+            // One label for the whole run (start→end), sat above its midpoint,
+            // instead of one per step. A start→end label is about three times
+            // the width of a block's, so it needs more room before it reads.
+            const label = (widthPct >= 4)
+                ? `<span class="watts-wprof--watt" style="bottom: calc(${stepToHeight((from.pct + to.pct) / 2)}% + 3px);">${Math.round(from.watts)}→${Math.round(to.watts)}</span>`
+                : '';
+            return acc +
+                `<div class="watts-wprof--seg" style="flex-grow: ${Math.max(1, segment.duration)};">
+                     ${rampSegmentHtml(segment, 'watts-wprof--ramp')}
+                     ${label}
+                     ${durationLabelHtml(segment.duration, widthPct)}
+                 </div>`;
+        }
+
+        const step = first(segment.steps);
+        const height = stepToHeight(step.pct);
+        const zone = zoneClassByPct(step.pct);
+        // every block is labelled, as on the live profile on Home — recovery
+        // and warmup wattages matter too. Width is the only gate: below it the
+        // label would spill over its neighbours (repeated 60 s efforts in an
+        // hour-long workout still qualify).
+        const label = (widthPct >= 1.2)
+            ? `<span class="watts-wprof--watt" style="bottom: calc(${height}% + 3px);">${Math.round(step.watts)}</span>`
+            : '';
+        return acc +
+            `<div class="watts-wprof--seg" style="flex-grow: ${Math.max(1, step.duration)};">
+                 <div class="watts-wprof--bar zone-${zone}" style="height: ${height}%;"></div>
+                 ${label}
+                 ${durationLabelHtml(step.duration, widthPct)}
+             </div>`;
+    }, '');
+
+    const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => {
+        const mins = Math.round((total * f) / 60);
+        return `<span class="watts-wprof--tick" style="left: ${f * 100}%;">${mins}:00</span>`;
+    }).join('');
+
+    return `
+        <div class="watts-wprof">
+            <div class="watts-wprof--axis">${axis}</div>
+            <div class="watts-wprof--plot">
+                <div class="watts-wprof--grid" style="top: 33.3%;"></div>
+                <div class="watts-wprof--grid" style="top: 66.6%;"></div>
+                <div class="watts-wprof--bars${dense}">${bars}</div>
+            </div>
+        </div>
+        <div class="watts-wprof--time">
+            <div class="watts-wprof--timespacer"></div>
+            <div class="watts-wprof--ticks">${ticks}</div>
+        </div>`;
+}
+
+// A drawn chevron rather than a text glyph: "⌄"/"⌃" sit off-centre in their
+// line box and differ between fonts. One icon, rotated by CSS when the row is
+// open (see .watts-chev--icon).
+const chevronSvg = `
+    <svg class="watts-chev--icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <path d="M6 9.5 12 15.5 18 9.5" fill="none" stroke="currentColor"
+              stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+
+// Small confirm dialog shared by the row actions that can't simply be undone.
+// Every caller-supplied string is written with textContent, so a workout name
+// can never inject markup into it.
+function confirmModal({head, body, confirmLabel, confirmClass, onConfirm}) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'wl-modal-backdrop';
+    backdrop.innerHTML = `
+        <div class="wl-modal" role="dialog" aria-modal="true">
+            <div class="wl-modal-head"></div>
+            <div class="wl-modal-body"></div>
+            <div class="wl-modal-foot">
+                <button class="wl-cancel btn">Cancel</button>
+                <button class="wl-confirm btn ${confirmClass ?? ''}"></button>
+            </div>
+        </div>`;
+    backdrop.querySelector('.wl-modal-head').textContent = head;
+    backdrop.querySelector('.wl-modal-body').textContent = body;
+    backdrop.querySelector('.wl-confirm').textContent = confirmLabel;
+
+    const close = () => backdrop.remove();
+    backdrop.addEventListener('pointerup', (e) => {
+        e.stopPropagation();
+        if(e.target === backdrop || e.target.closest('.wl-cancel')) { close(); return; }
+        if(e.target.closest('.wl-confirm')) { close(); onConfirm(); }
+    });
+    document.body.appendChild(backdrop);
+    return backdrop;
+}
+
+function durationText(workout) {
     if(workout.meta.distance) {
-        duration = `${(workout.meta.distance / 1000).toFixed(2)} km`;
+        return `${(workout.meta.distance / 1000).toFixed(2)} km`;
     }
-    // Default (built-in) workouts are read-only: their only menu action is
-    // "Duplicate" (copy into My workouts). The user's own workouts can be edited
-    // in place, duplicated, or deleted. All of these live in the 3-dot menu.
+    if(workout.meta.duration) {
+        return `${Math.round(workout.meta.duration / 60)} min`;
+    }
+    return '';
+}
+
+function workoutTemplate(workout, ftp) {
     const isDefault = !!workout.isDefault;
+    const name = esc(workout.meta.name);
+    const description = esc(workout.meta.description);
+    const category = esc(workout.meta.category ?? '');
+    const catColor = workoutCategoryColor[workout.meta.category]
+        ?? WORKOUT_CATEGORY_FALLBACK_COLOR;
+    const duration = durationText(workout);
+
+    const isCourse = !exists(workout.intervals);
+    const steps = isCourse ? [] : workoutToSteps(workout, ftp);
+
+    const mini = isCourse
+        ? `<div class="watts-wmini">${courseToGraph(workout, {width: 130, height: 40, aspectRatio: 130 / 40})}</div>`
+        : miniProfileHtml(steps);
+
+    const profile = isCourse
+        ? `<div class="watts-wprof--course">${courseToGraph(workout, {width: 900, height: 170, aspectRatio: 900 / 170})}</div>`
+        : fullProfileHtml(steps, ftp, workout.meta.duration ?? 0);
+
+    // Default (built-in) workouts are read-only: their only menu action is
+    // "Duplicate" (copy into My Workouts). The user's own workouts can be
+    // edited in place, duplicated, or deleted.
     const menuItems = isDefault
-        ? `<button class="workout--menu-item" data-action="duplicate" title="Copy into My workouts and open in the designer">Duplicate</button>`
-        : `<button class="workout--menu-item" data-action="edit" title="Edit this workout in the designer">Edit</button>
-                                <button class="workout--menu-item" data-action="duplicate" title="Save a copy into My workouts">Duplicate</button>
-                                <button class="workout--menu-item workout--menu-item--danger" data-action="delete" title="Delete this workout">Delete</button>`;
-    return `<workout-item class='workout cf' id="${workout.id}" metric="ftp">
-                <div class="workout--info">
-                    <div class="workout--short-info">
-                        <div class="workout--summary">
-                            <div class="workout--name">${workout.meta.name}</div>
-                            <div class="workout--type">${workout.meta.category}</div>
-                            <div class="workout--duration">${duration}</div>
-                            <div class="workout--select" id="btn${workout.id}">${workout.selected ? radioOn : radioOff}
-                            </div>
-                            <div class="workout--options">${options}
-                                <div class="workout--menu" hidden>${menuItems}</div>
-                            </div>
-                        </div>
+        ? `<button class="watts-wmenu--item" data-action="duplicate" title="Copy into My Workouts and open in the designer">Duplicate</button>`
+        : `<button class="watts-wmenu--item" data-action="edit" title="Edit this workout in the designer">Edit</button>
+           <button class="watts-wmenu--item" data-action="duplicate" title="Save a copy into My Workouts">Duplicate</button>
+           <button class="watts-wmenu--item watts-wmenu--item--danger" data-action="delete" title="Delete this workout">Delete</button>`;
+
+    // The load-selector is a radio, not a toggle: exactly one workout is loaded
+    // at a time, and db.workout is a single value shared by both library tabs,
+    // so selecting here deselects whatever was chosen on the other tab.
+    return `<workout-item class="watts-wrow" id="${workout.id}" metric="ftp">
+                <div class="watts-wrow--head">
+                    <button class="watts-wsel" role="radio" aria-checked="false"
+                            title="Load this workout" aria-label="Load ${name}">
+                        <span class="watts-wsel--dot"></span>
+                    </button>
+                    ${mini}
+                    <div class="watts-wrow--text">
+                        <div class="watts-wrow--name">${name}</div>
+                        <div class="watts-wrow--desc">${description}</div>
                     </div>
-                    <div class="workout--full-info">
-                        <div class="workout-list--graph-cont">${workout.graph}</div>
-                        <div class="workout--description">${workout.meta.description}</div>
+                    <div class="watts-wrow--cat" style="color: ${catColor};">${category}</div>
+                    <div class="watts-wrow--dur">${duration}</div>
+                    <button class="watts-start-pill" title="Select this workout and go to the ride screen">START</button>
+                    <div class="watts-wrow--options">
+                        <button class="watts-dots" title="Options">⋮</button>
+                        <div class="watts-wmenu" hidden>${menuItems}</div>
+                    </div>
+                    <span class="watts-chev">${chevronSvg}</span>
+                </div>
+                <div class="watts-wrow--expand" hidden>
+                    ${profile}
+                    <div class="watts-wexp--foot">
+                        <div class="watts-wexp--desc">${description}</div>
+                        <button class="watts-start-btn">Start Workout</button>
                     </div>
                 </div>
             </workout-item>`;
@@ -61,11 +296,8 @@ class WorkoutList extends HTMLElement {
         super();
         this.state = [];
         this.ftp = 0;
-        this.items = [];
-        this.postInit();
         this.workout = {};
     }
-    postInit() { return; }
     connectedCallback() {
         const self = this;
         this.abortController = new AbortController();
@@ -75,14 +307,19 @@ class WorkoutList extends HTMLElement {
         this.filter = this.getAttribute('filter') || 'user';
 
         xf.sub(`db:workouts`, this.onWorkouts.bind(this), this.signal);
-        xf.sub('db:workout',  this.onWorkout.bind(this), this.signal); // ?
+        xf.sub('db:workout',  this.onWorkout.bind(this), this.signal);
         xf.sub(`db:ftp`,      this.onFTP.bind(this), this.signal);
+        // switching library tabs collapses any open expanded row.
+        xf.sub('action:nav',  this.onNav.bind(this), this.signal);
     }
     disconnectedCallback() {
         this.abortController.abort();
     }
-    getWidth() {
-        return window.innerWidth;
+    onNav(action) {
+        if(String(action).startsWith('workouts')) {
+            this.querySelectorAll('workout-item.is-expanded')
+                .forEach((item) => item.collapse?.());
+        }
     }
     onWorkout(value) {
         this.workout = value;
@@ -99,42 +336,6 @@ class WorkoutList extends HTMLElement {
         this.state = value;
         this.render();
     }
-    getViewPort() {
-        const self = this;
-
-        const $el = document.querySelector('#workouts-page');
-        const fontSize = parseInt(window.getComputedStyle($el).getPropertyValue('font-size'));
-        const em = 8;
-
-        const width = self.getWidth();
-        const height = fontSize * em;
-        const aspectRatio = width / height;
-
-
-        return {
-            height,
-            width,
-            aspectRatio,
-        };
-    }
-    stateToHtml(state, ftp, selectedWorkout) {
-        const self = this;
-        const viewPort = this.getViewPort();
-
-        return state.reduce((acc, workout, i) => {
-            let graph = '';
-
-            if(exists(workout.intervals)) {
-                graph = intervalsToGraph(workout, ftp, viewPort);
-            } else {
-                graph = courseToGraph(workout, viewPort);
-            }
-
-            const selected = equals(workout.id, selectedWorkout.id);
-            workout = Object.assign(workout, {graph: graph, selected: selected});
-            return acc + workoutTemplate(workout);
-        }, '');
-    }
     forFilter(state) {
         return (state ?? []).filter((w) =>
             this.filter === 'default' ? w.isDefault : !w.isDefault);
@@ -142,8 +343,8 @@ class WorkoutList extends HTMLElement {
     emptyHtml() {
         const msg = this.filter === 'default'
             ? `No built-in workouts found.`
-            : `You have no saved workouts yet. Copy a default workout below, upload a .zwo/.fit, or build one in the Editor.`;
-        return `<div class="workout--empty">${msg}</div>`;
+            : `You have no saved workouts yet. Duplicate a Default workout, load a .zwo/.fit file, or build one in the Editor.`;
+        return `<div class="watts-wempty">${msg}</div>`;
     }
     render() {
         const items = this.forFilter(this.state);
@@ -151,68 +352,60 @@ class WorkoutList extends HTMLElement {
             this.innerHTML = this.emptyHtml();
             return;
         }
-        this.innerHTML = this.stateToHtml(items, this.ftp, this.workout);
+        this.innerHTML = items.reduce((acc, workout) =>
+            acc + workoutTemplate(workout, this.ftp), '');
     }
 }
-
-
 
 class WorkoutListItem extends HTMLElement {
     constructor() {
         super();
-        this.state = '';
         this.isExpanded = false;
         this.isSelected = false;
         this.menuOpen = false;
     }
     connectedCallback() {
         const self = this;
-        this.infoCont = this.querySelector('.workout--info');
-        this.summary = this.querySelector('.workout--summary');
-        this.description = this.querySelector('.workout--full-info');
-        this.selectBtn = this.querySelector('.workout--select');
-        this.optionsBtn = this.querySelector('.workout--options');
-        this.menu = this.querySelector('.workout--menu');
-        this.indicator = this.selectBtn;
+        this.head = this.querySelector('.watts-wrow--head');
+        this.expandCont = this.querySelector('.watts-wrow--expand');
+        this.selectBtn = this.querySelector('.watts-wsel');
+        this.optionsBtn = this.querySelector('.watts-wrow--options');
+        this.menu = this.querySelector('.watts-wmenu');
+        this.startPill = this.querySelector('.watts-start-pill');
+        this.startBtn = this.querySelector('.watts-start-btn');
         this.id = this.getAttribute('id');
+        this.workoutStatus = 'stopped';
 
         this.abortController = new AbortController();
         this.signal = { signal: self.abortController.signal };
 
-        this.debounced = {
-            onWindowResize: debounce(
-                self.onWindowResize.bind(this), 300, {trailing: true, leading: false},
-            ),
-        };
-
-        this.dom = {};
-        this.dom.info = this.querySelector('.graph--info--cont');
-        this.dom.cont = this.querySelector('.workout-list--graph-cont');
-        this.viewPort = this.getViewPort();
-
         xf.sub('db:workout', this.onWorkout.bind(this), this.signal);
-        this.summary.addEventListener('pointerup', this.toggleExpand.bind(this), this.signal);
+        // whether a ride is under way decides if loading another workout has
+        // to be confirmed first
+        xf.sub('db:workoutStatus', this.onWorkoutStatus.bind(this), this.signal);
+        this.selectBtn.addEventListener('pointerup', this.onSelect.bind(this), this.signal);
+        this.head.addEventListener('pointerup', this.onHeadClick.bind(this), this.signal);
         this.optionsBtn.addEventListener('pointerup', this.toggleMenu.bind(this), this.signal);
         this.menu.addEventListener('pointerup', this.onMenuItem.bind(this), this.signal);
-        this.selectBtn.addEventListener('pointerup', this.onRadio.bind(this), this.signal);
+        this.startPill.addEventListener('pointerup', this.onStart.bind(this), this.signal);
+        if(exists(this.startBtn)) {
+            this.startBtn.addEventListener('pointerup', this.onStart.bind(this), this.signal);
+        }
         // clicking anywhere outside an open menu closes it.
         document.addEventListener('pointerup', this.onDocPointerUp.bind(this), this.signal);
-
-        this.addEventListener('mousemove', this.onHover.bind(this), this.signal);
-        this.addEventListener('mouseout', this.onMouseOut.bind(this), this.signal);
-        window.addEventListener('resize', this.debounced.onWindowResize.bind(this), this.signal);
-
     }
     disconnectedCallback() {
         this.abortController.abort();
     }
-    toggleExpand(e) {
-        // clicks on the 3-dot menu (icon, button, or the open menu itself) must
-        // not toggle the graph. closest() catches the inner <svg>/<use> targets
-        // that the old classList check missed.
-        if(e.target.closest('.workout--options')) {
-            return;
-        }
+    onHeadClick(e) {
+        // the load-selector, START and the 3-dot menu handle their own clicks;
+        // closest() catches the inner <svg>/<button> targets too.
+        if(e.target.closest('.watts-wsel')) return;
+        if(e.target.closest('.watts-start-pill')) return;
+        if(e.target.closest('.watts-wrow--options')) return;
+        this.toggleExpand();
+    }
+    toggleExpand() {
         if(this.isExpanded) {
             this.collapse();
         } else {
@@ -220,34 +413,65 @@ class WorkoutListItem extends HTMLElement {
         }
     }
     expand() {
-        this.description.style.display = 'block';
+        // accordion: only one row open at a time across the page.
+        document.querySelectorAll('workout-item.is-expanded').forEach((item) => {
+            if(!equals(item, this)) item.collapse?.();
+        });
+        this.expandCont.hidden = false;
+        this.classList.add('is-expanded');
         this.isExpanded = true;
     }
     collapse() {
-        this.description.style.display = 'none';
+        this.expandCont.hidden = true;
+        this.classList.remove('is-expanded');
         this.isExpanded = false;
     }
-    toggleSelect(id) {
-        if(equals(this.id, id)) {
-            if(!this.isSelected) {
-                this.select();
-                this.expand();
-            }
-        } else {
-            this.diselect();
-        }
+    onSelect(e) {
+        e.stopPropagation();
+        this.load();
     }
-    select() {
-        this.indicator.innerHTML = radioOn;
-        this.isSelected = true;
+    onStart(e) {
+        e.stopPropagation();
+        this.load(() => xf.dispatch('ui:page-set', 'home'));
     }
-    diselect() {
-        this.indicator.innerHTML = radioOff;
-        this.isSelected = false;
+    // Make this the loaded workout, then run `then` (START also navigates home).
+    //
+    // Swapping mid-ride would leave the watch running against the intervals of
+    // the workout that is no longer loaded, so a ride in progress is stopped —
+    // which ends and saves it — and that is worth asking about first.
+    load(then) {
+        const proceed = () => {
+            xf.dispatch('ui:workout:select', this.id);
+            then?.();
+        };
+        if(this.isSelected) { then?.(); return; }
+        if(!equals(this.workoutStatus, 'started')) { proceed(); return; }
+
+        const name = (this.querySelector('.watts-wrow--name')?.textContent ?? '').trim()
+                  || 'this workout';
+        confirmModal({
+            head: 'Workout in progress',
+            body: `Loading “${name}” will stop and save the workout you are riding. Continue?`,
+            confirmLabel: 'Load workout',
+            confirmClass: 'wl-confirm--go',
+            onConfirm: () => {
+                // already confirmed here — don't make the watch ask again
+                xf.dispatch('ui:watchStop', {confirmed: true});
+                proceed();
+            },
+        });
+    }
+    onWorkout(workout) {
+        this.isSelected = equals(workout?.id, this.id);
+        this.classList.toggle('is-selected', this.isSelected);
+        this.selectBtn.setAttribute('aria-checked', String(this.isSelected));
+    }
+    onWorkoutStatus(status) {
+        this.workoutStatus = status;
     }
     toggleMenu(e) {
-        // stop the summary's pointerup from also toggling the graph, and stop
-        // the document listener from immediately closing what we just opened.
+        // stop the head's pointerup from also toggling the row, and stop the
+        // document listener from immediately closing what we just opened.
         e.stopPropagation();
         if(this.menuOpen) {
             this.closeMenu();
@@ -256,19 +480,18 @@ class WorkoutListItem extends HTMLElement {
         }
     }
     openMenu() {
-        // only one menu open at a time across the list; also drop any stale
-        // row elevation so this row's dropdown sits above its neighbours.
-        document.querySelectorAll('.workout--menu:not([hidden])')
+        // only one menu open at a time across the list.
+        document.querySelectorAll('.watts-wmenu:not([hidden])')
             .forEach((m) => { m.hidden = true; });
-        document.querySelectorAll('.workout--info.menu-open')
+        document.querySelectorAll('.watts-wrow--head.menu-open')
             .forEach((el) => el.classList.remove('menu-open'));
         this.menu.hidden = false;
-        this.infoCont.classList.add('menu-open');
+        this.head.classList.add('menu-open');
         this.menuOpen = true;
     }
     closeMenu() {
         this.menu.hidden = true;
-        this.infoCont.classList.remove('menu-open');
+        this.head.classList.remove('menu-open');
         this.menuOpen = false;
     }
     onDocPointerUp(e) {
@@ -277,7 +500,7 @@ class WorkoutListItem extends HTMLElement {
         this.closeMenu();
     }
     onMenuItem(e) {
-        const item = e.target.closest('.workout--menu-item');
+        const item = e.target.closest('.watts-wmenu--item');
         if(!item) return;
         e.stopPropagation();
         this.closeMenu();
@@ -292,90 +515,15 @@ class WorkoutListItem extends HTMLElement {
     }
     // Deleting a user workout is destructive and can't be undone, so confirm it.
     confirmDelete() {
-        const name = (this.querySelector('.workout--name')?.textContent ?? '').trim();
-        const backdrop = document.createElement('div');
-        backdrop.className = 'wl-modal-backdrop';
-        backdrop.innerHTML = `
-            <div class="wl-modal" role="dialog" aria-modal="true">
-                <div class="wl-modal-head">Delete workout</div>
-                <div class="wl-modal-body">Delete “<span class="wl-modal-name"></span>”? This can’t be undone.</div>
-                <div class="wl-modal-foot">
-                    <button class="wl-cancel btn">Cancel</button>
-                    <button class="wl-confirm btn btn--danger">Delete</button>
-                </div>
-            </div>`;
-        // set via textContent so a workout name can never inject markup.
-        backdrop.querySelector('.wl-modal-name').textContent = name || 'this workout';
-        const close = () => backdrop.remove();
-        backdrop.addEventListener('pointerup', (ev) => {
-            ev.stopPropagation();
-            if(ev.target === backdrop || ev.target.closest('.wl-cancel')) { close(); return; }
-            if(ev.target.closest('.wl-confirm')) {
-                xf.dispatch('ui:workout:remove', this.id);
-                close();
-            }
+        const name = (this.querySelector('.watts-wrow--name')?.textContent ?? '').trim()
+                  || 'this workout';
+        confirmModal({
+            head: 'Delete workout',
+            body: `Delete “${name}”? This can’t be undone.`,
+            confirmLabel: 'Delete',
+            confirmClass: 'btn--danger',
+            onConfirm: () => xf.dispatch('ui:workout:remove', this.id),
         });
-        document.body.appendChild(backdrop);
-    }
-    onWorkout(workout) {
-        this.workout = workout;
-        this.toggleSelect(workout.id);
-    }
-    onRadio(e) {
-        e.stopPropagation();
-        xf.dispatch('ui:workout:select', this.id);
-    }
-    onUpdate(value) {
-        if(!equals(value, this.state)) {
-            this.state = value;
-            this.render();
-        }
-    }
-    onHover(e) {
-        const self = this;
-        const target = this.querySelector('.graph--bar:hover');
-        if(exists(target)) {
-            const power        = target.getAttribute('power');
-            const cadence      = target.getAttribute('cadence');
-            const slope        = target.getAttribute('slope');
-            const duration     = target.getAttribute('duration');
-            const distance     = target.getAttribute('distance');
-            const intervalRect = target.getBoundingClientRect();
-            this.viewPort      = this.getViewPort(); // move to more sensible event
-
-            this.renderInfo({
-                power,
-                cadence,
-                slope,
-                duration,
-                distance,
-                intervalRect,
-                contRect: self.viewPort,
-                mouseX: e.clientX,
-                mouseY: e.clientY,
-                dom: self.dom,
-            });
-        }
-    }
-    onMouseOut(e) {
-        this.dom.info.style.display = 'none';
-    }
-    getViewPort() {
-        const rect = this.dom.cont.getBoundingClientRect();
-        return {
-            width: rect.width,
-            height: rect.height,
-            left: rect.left,
-            top: rect.top,
-            aspectRatio: rect.width / rect.height,
-        };
-    }
-    onWindowResize(e) {
-        this.viewPort = this.getViewPort();
-    }
-    render() {}
-    renderInfo(args = {}) {
-        renderInfo(args);
     }
 }
 
@@ -383,9 +531,8 @@ customElements.define('workout-list', WorkoutList);
 customElements.define('workout-item', WorkoutListItem);
 
 export {
-    radioOff,
-    radioOn,
-    options,
     workoutTemplate,
+    workoutToSteps,
+    miniProfileHtml,
+    fullProfileHtml,
 };
-

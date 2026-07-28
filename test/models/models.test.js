@@ -160,3 +160,30 @@ describe('power1s', () => {
     });
 });
 
+
+//
+// Riders who set their preferences before a flag existed have a settings blob
+// in local storage without it. An absent flag reads as "off" in the toggles, so
+// Sources.restore fills the gaps from the current defaults.
+//
+describe('sources restore', () => {
+    // Stands in for LocalStorageItem, handing back whatever a rider last saved.
+    function storedSources(saved) {
+        const Storage = function() { this.restore = () => saved; this.set = () => {}; };
+        return new models.Sources({prop: 'sources', storage: Storage});
+    }
+
+    test('fills in a setting that did not exist when the blob was saved', () => {
+        const sources = storedSources({power: 'ble:controllable', autoPause: false});
+        const restored = sources.restore();
+
+        expect(restored.autoPause).toBe(false);          // what they chose
+        expect(restored.autoStart).toBe(true);           // new flag, its default
+        expect(restored.power).toBe('ble:controllable'); // untouched
+    });
+
+    test('nothing saved at all falls back to the defaults', () => {
+        const sources = storedSources(undefined);
+        expect(sources.restore()).toEqual(sources.defaultValue());
+    });
+});

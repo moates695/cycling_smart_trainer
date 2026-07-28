@@ -1,0 +1,931 @@
+/*
+ * WATTS overhaul — Settings page (Trainer + Account tabs).
+ *
+ * All rules are scoped to #settings-page (plus the #ant-device-request
+ * dialog which lives inside it). Design tokens (--watts-*) come from
+ * flux.css. Do not add rules for other pages here.
+ */
+
+/* ---------- Page shell + sub-tab bar ---------- */
+
+#settings-page .watts-set {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 8px 32px 48px;
+    font-family: var(--watts-body);
+    text-align: left;
+}
+
+#settings-page .watts-set--tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--watts-border);
+    margin-bottom: 24px;
+}
+
+#settings-page .watts-set--tab {
+    padding: 9px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font: 600 13px/1 var(--watts-ssb);
+    letter-spacing: .04em;
+    color: var(--watts-text-faint);
+    transition: color .15s, background .15s;
+}
+
+#settings-page .watts-set--tab.active {
+    background: var(--watts-chip);
+    color: var(--watts-text);
+}
+
+/* ---------- Shared card / label primitives ---------- */
+
+#settings-page .watts-set--card {
+    background: var(--watts-panel);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 16px;
+    padding: 22px 24px;
+}
+
+#settings-page .watts-set--card-grad {
+    background: var(--watts-hero-grad-135);
+}
+
+#settings-page .watts-set--eyebrow {
+    font: 600 12px/1 var(--watts-ssb);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--watts-text-mut);
+    margin: 0;
+}
+
+#settings-page .watts-btn-chip {
+    padding: 8px 14px;
+    border-radius: 9px;
+    background: var(--watts-chip);
+    border: 1px solid rgba(255,255,255,.1);
+    color: var(--watts-text-2);
+    font: 600 12px/1 var(--watts-ssb);
+    letter-spacing: .04em;
+    cursor: pointer;
+    text-transform: none;
+    display: inline-block;
+    text-align: center;
+    text-decoration: none;
+}
+
+#settings-page .watts-btn-chip:hover {
+    border-color: rgba(255,255,255,.2);
+}
+
+/* ---------- Trainer: top row (Rider Profile + Options) ---------- */
+
+#settings-page .watts-set--toprow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+    align-items: stretch;
+}
+
+/* Rider Profile */
+
+#settings-page .watts-rider--row {
+    display: flex;
+    align-items: stretch;
+    gap: 26px;
+    margin-top: 16px;
+}
+
+#settings-page .watts-rider--div {
+    width: 1px;
+    align-self: stretch;
+    background: rgba(255,255,255,.1);
+}
+
+#settings-page .watts-rider--metric {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+#settings-page .watts-rider--head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 20px;
+}
+
+#settings-page .watts-rider--label {
+    font: 600 11px/1 var(--watts-ssb);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--watts-text-faint);
+}
+
+#settings-page .watts-edit-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: var(--watts-chip);
+    border: 1px solid rgba(255,255,255,.1);
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    color: var(--watts-accent);
+    cursor: pointer;
+}
+
+/* The FTP / weight values are real inputs styled as underlined numerals;
+   int-input/weight-input commit on change (Enter or blur). */
+#settings-page .watts-rider--input {
+    appearance: textfield;
+    -moz-appearance: textfield;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid rgba(255,255,255,.25);
+    border-radius: 0;
+    outline: none;
+    width: 3.4ch;
+    padding: 0 2px;
+    text-align: center;
+    font: 700 46px/1 var(--watts-ssb);
+    color: var(--watts-text);
+    font-variant-numeric: tabular-nums;
+}
+
+#settings-page .watts-rider--input::-webkit-outer-spin-button,
+#settings-page .watts-rider--input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#settings-page .watts-rider--input.accent {
+    color: var(--watts-accent);
+    border-bottom-color: rgba(200,246,81,.4);
+}
+
+#settings-page .watts-rider--input:focus {
+    border-bottom-color: var(--watts-accent);
+}
+
+#settings-page .watts-rider--value {
+    font: 700 46px/1 var(--watts-ssb);
+    color: var(--watts-text);
+    padding: 0 2px;
+    font-variant-numeric: tabular-nums;
+}
+
+#settings-page .watts-rider--unit {
+    font: 600 16px/1 var(--watts-ssb);
+    color: var(--watts-text-mut);
+}
+
+/* Options */
+
+#settings-page .watts-options {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+#settings-page .watts-options .watts-set--eyebrow {
+    margin-bottom: 2px;
+}
+
+#settings-page .watts-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+#settings-page .watts-option--name {
+    font: 600 14px/1 var(--watts-ssb);
+    color: var(--watts-text-2);
+}
+
+/* Units segmented control */
+
+#settings-page units-switch {
+    display: flex;
+    background: var(--watts-chip);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 9px;
+    padding: 3px;
+    gap: 2px;
+}
+
+#settings-page units-switch .watts-set--seg-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    color: var(--watts-text-mut);
+    font: 600 12px/1 var(--watts-ssb);
+    cursor: pointer;
+    transition: color .15s, background .15s;
+}
+
+#settings-page units-switch .watts-set--seg-btn.active {
+    background: var(--watts-accent);
+    color: var(--watts-bg);
+    font-weight: 700;
+}
+
+/* Sound slider */
+
+#settings-page volume-slider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 180px;
+}
+
+#settings-page volume-slider input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    min-width: 0;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right,
+        var(--watts-accent) var(--fill, 0%),
+        var(--watts-chip) var(--fill, 0%));
+    outline: none;
+    cursor: pointer;
+    margin: 0;
+}
+
+#settings-page volume-slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--watts-text);
+    border: none;
+    cursor: pointer;
+}
+
+#settings-page volume-slider input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--watts-text);
+    border: none;
+    cursor: pointer;
+}
+
+#settings-page volume-slider .watts-set--range-value {
+    font: 700 13px/1 var(--watts-ssb);
+    width: 38px;
+    text-align: right;
+    color: var(--watts-text);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Toggle switch */
+
+#settings-page .watts-set--toggle {
+    width: 44px;
+    height: 24px;
+    border-radius: 999px;
+    position: relative;
+    cursor: pointer;
+    transition: background .15s;
+    background: #2b303b;
+    flex: 0 0 auto;
+}
+
+#settings-page .watts-set--toggle .watts-set--toggle-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    transition: left .15s, background .15s;
+    background: var(--watts-text-mut);
+}
+
+#settings-page .watts-set--toggle.on {
+    background: var(--watts-accent);
+}
+
+#settings-page .watts-set--toggle.on .watts-set--toggle-knob {
+    left: 23px;
+    background: var(--watts-bg);
+}
+
+/* ---------- Trainer: connected devices ---------- */
+
+#settings-page .watts-devices--label {
+    display: block;
+    margin: 22px 0 14px;
+}
+
+#settings-page .watts-devices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+#settings-page .watts-dev {
+    background: var(--watts-panel);
+    border: 1px solid var(--watts-border);
+    border-radius: 14px;
+    padding: 16px 18px;
+}
+
+#settings-page .watts-dev--head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#settings-page .watts-dev--icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: var(--watts-chip);
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+}
+
+#settings-page .watts-dev--icon svg {
+    width: 18px;
+    height: 18px;
+    fill: #5b9bff;
+}
+
+#settings-page .watts-dev--id {
+    flex: 1;
+    min-width: 0;
+}
+
+#settings-page .watts-dev--type {
+    font: 600 11px/1 var(--watts-ssb);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--watts-text-faint);
+}
+
+#settings-page .watts-dev--name {
+    display: block;
+    font: 600 15px/1.15 var(--watts-ssb);
+    color: var(--watts-text);
+    margin-top: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Battery bar — hidden until a batteryLevel event classifies it */
+
+#settings-page .watts-dev battery-level {
+    display: none;
+    width: 26px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255,255,255,.12);
+    overflow: hidden;
+    flex: 0 0 auto;
+}
+
+#settings-page .watts-dev battery-level.ok,
+#settings-page .watts-dev battery-level.low,
+#settings-page .watts-dev battery-level.critical {
+    display: block;
+}
+
+#settings-page .watts-dev battery-level .battery--level {
+    height: 100%;
+    width: 0;
+    background: var(--watts-connected);
+}
+
+#settings-page .watts-dev battery-level.low .battery--level {
+    background: var(--watts-z4);
+}
+
+#settings-page .watts-dev battery-level.critical .battery--level {
+    background: var(--watts-z6);
+}
+
+/* Status pill — the connection-switch itself; classes on/off/loading are
+   toggled on the .watts-devpill--ind span by connection-switch.js */
+
+#settings-page .watts-devpill {
+    flex: 0 0 auto;
+}
+
+#settings-page .watts-devpill--ind {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    background: var(--watts-chip);
+    cursor: pointer;
+    transition: background .15s;
+}
+
+#settings-page .watts-devpill--dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--watts-text-dim);
+}
+
+#settings-page .watts-devpill--txt {
+    font: 600 11px/1 var(--watts-ssb);
+    letter-spacing: .06em;
+    color: var(--watts-text-faint);
+}
+
+#settings-page .watts-devpill--txt::after { content: 'CONNECT'; }
+
+#settings-page .watts-devpill--ind.on {
+    background: rgba(34,197,94,.12);
+}
+
+#settings-page .watts-devpill--ind.on .watts-devpill--dot {
+    background: var(--watts-connected);
+    box-shadow: 0 0 6px rgba(34,197,94,.7);
+}
+
+#settings-page .watts-devpill--ind.on .watts-devpill--txt {
+    color: var(--watts-connected);
+}
+
+#settings-page .watts-devpill--ind.on .watts-devpill--txt::after { content: 'CONNECTED'; }
+
+#settings-page .watts-devpill--ind.loading {
+    background: rgba(245,158,11,.12);
+}
+
+#settings-page .watts-devpill--ind.loading .watts-devpill--dot {
+    background: var(--watts-pairing);
+    box-shadow: 0 0 6px rgba(245,158,11,.7);
+}
+
+#settings-page .watts-devpill--ind.loading .watts-devpill--txt {
+    color: var(--watts-pairing);
+}
+
+#settings-page .watts-devpill--ind.loading .watts-devpill--txt::after { content: 'PAIRING'; }
+
+/* Metric chips — source-switch gets .active when it IS the data source */
+
+#settings-page .watts-dev--chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+#settings-page .watts-chip {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--watts-chip);
+    border: 1px solid rgba(255,255,255,.06);
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+
+#settings-page .watts-chip--label {
+    font: 600 11px/1 var(--watts-ssb);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--watts-text-mut);
+}
+
+#settings-page .watts-chip--value {
+    font: 700 15px/1 var(--watts-ssb);
+    color: var(--watts-text);
+    font-variant-numeric: tabular-nums;
+}
+
+#settings-page .watts-chip--off {
+    display: none;
+    font: 700 15px/1 var(--watts-ssb);
+    color: var(--watts-text-dim);
+}
+
+#settings-page .watts-chip.active {
+    background: rgba(200,246,81,.06);
+    border-color: rgba(200,246,81,.18);
+}
+
+#settings-page .watts-chip:not(.active) .watts-chip--value { display: none; }
+#settings-page .watts-chip:not(.active) .watts-chip--off { display: inline; }
+
+#settings-page .watts-chip.hr.active .watts-chip--value {
+    color: var(--watts-hr);
+}
+
+/* ANT+ secondary row inside the Heart Rate card (hidden while the platform
+   lacks serial support via the legacy .ant-not-supported rule) */
+
+#settings-page .watts-dev--antrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(255,255,255,.08);
+}
+
+#settings-page .watts-dev--antrow .watts-dev--name {
+    flex: 1;
+    margin-top: 0;
+}
+
+/* ---------- Trainer: about card ---------- */
+
+#settings-page .watts-about {
+    /* legacy #about rules in flux.css centre + cap it — restore card layout */
+    max-width: none;
+    margin: 14px 0 0;
+    padding: 22px 24px;
+    color: var(--watts-text-mut);
+    font: 400 13px/1.5 var(--watts-body);
+    text-align: left;
+}
+
+#settings-page .watts-about p { margin: 0; }
+#settings-page .watts-about > div { margin-top: 10px; }
+#settings-page .watts-about .about--text { margin-bottom: 0; }
+
+#settings-page .watts-about a {
+    color: var(--watts-text-2);
+    text-decoration: underline;
+}
+
+/* ---------- Account tab ---------- */
+
+#settings-page .watts-acct {
+    display: grid;
+    grid-template-columns: 1.1fr .9fr;
+    gap: 14px;
+    align-items: start;
+}
+
+/* Signed in: hide the sign-in card, centre the remaining column */
+#settings-page .watts-acct:has(#profile.active) {
+    grid-template-columns: 1fr;
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+#settings-page .watts-acct:has(#profile.active) .watts-acct--signin {
+    display: none;
+}
+
+#settings-page .watts-acct--right:has(#profile.active) .watts-guest-card {
+    display: none;
+}
+
+#settings-page .auth.watts-acct--signin {
+    margin: 0;
+    padding: 30px 32px;
+}
+
+#settings-page .watts-acct--right {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Forms — only the .active one shows (auth-forms.js toggles the class) */
+
+#settings-page .watts-acct form {
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 400px;
+}
+
+#settings-page .watts-acct form.active {
+    display: flex;
+}
+
+#settings-page .watts-acct--sub {
+    font: 400 14px/1.5 var(--watts-body);
+    color: var(--watts-text-mut);
+    margin: -4px 0 6px;
+    max-width: 340px;
+}
+
+#settings-page .watts-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+#settings-page .watts-field--row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+#settings-page .watts-field--label {
+    font: 600 11px/1 var(--watts-ssb);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--watts-text-faint);
+}
+
+#settings-page .watts-acct .input {
+    margin: 0;
+    height: auto;
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--watts-sunken);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 11px;
+    padding: 13px 15px;
+    font: 500 15px/1.2 var(--watts-body);
+    color: var(--watts-text);
+}
+
+#settings-page .watts-acct .input::placeholder {
+    color: var(--watts-text-dim);
+}
+
+#settings-page .watts-acct .input:focus {
+    outline: none;
+    border-color: rgba(200,246,81,.5);
+}
+
+/* Honeypot field stays hidden (flux.css hides it at lower specificity) */
+#settings-page .watts-acct .input[name="username"] { display: none; }
+
+#settings-page .watts-btn-accent {
+    margin-top: 4px;
+    padding: 14px;
+    border: none;
+    border-radius: 11px;
+    background: var(--watts-accent);
+    color: var(--watts-bg);
+    text-align: center;
+    font: 700 14px/1 var(--watts-ssb);
+    letter-spacing: .06em;
+    cursor: pointer;
+    text-transform: none;
+}
+
+#settings-page .watts-btn-accent:hover {
+    background: var(--watts-accent-hover);
+}
+
+#settings-page .watts-acct--link {
+    font: 600 13px/1 var(--watts-ssb);
+    color: var(--watts-accent);
+    cursor: pointer;
+}
+
+#settings-page .watts-field--row .watts-acct--link {
+    font-size: 11px;
+}
+
+#settings-page .watts-acct--alt {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    align-items: baseline;
+    text-align: center;
+    font: 400 13px/1 var(--watts-body);
+    color: var(--watts-text-mut);
+    margin-top: 4px;
+}
+
+#settings-page .watts-acct--msg {
+    font: 400 13px/1.4 var(--watts-body);
+}
+
+#settings-page .watts-acct--msg.success { color: var(--watts-connected); }
+#settings-page .watts-acct--msg.error   { color: var(--watts-hr); }
+#settings-page .watts-acct--msg.loading { color: var(--watts-text-mut); }
+
+#settings-page .watts-acct .cf-turnstile {
+    margin: 14px 0 0;
+}
+
+#settings-page .watts-acct #auth-error--section {
+    display: none;
+    margin: 14px 0 0;
+    font: 500 13px/1.4 var(--watts-body);
+    color: var(--watts-hr);
+}
+
+#settings-page .watts-acct #auth-error--section.active {
+    display: block;
+}
+
+/* Why sign in */
+
+#settings-page .watts-why--list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 16px;
+}
+
+#settings-page .watts-why--item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+#settings-page .watts-why--icon {
+    color: var(--watts-accent);
+    font-size: 15px;
+    line-height: 1.3;
+}
+
+#settings-page .watts-why--title {
+    font: 600 14px/1 var(--watts-ssb);
+    color: var(--watts-text);
+}
+
+#settings-page .watts-why--desc {
+    font: 400 13px/1.45 var(--watts-body);
+    color: var(--watts-text-mut);
+    margin-top: 3px;
+}
+
+/* Guest / signed-in status cards */
+
+#settings-page .watts-guest-card,
+#settings-page .watts-signedin-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 24px;
+}
+
+#settings-page .watts-guest--avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--watts-chip);
+    border: 1px solid rgba(255,255,255,.1);
+    display: grid;
+    place-items: center;
+    color: var(--watts-text-dim);
+    font-size: 18px;
+    flex: 0 0 auto;
+}
+
+#settings-page .watts-guest--avatar.signedin {
+    color: var(--watts-accent);
+    border-color: rgba(200,246,81,.4);
+}
+
+#settings-page .watts-guest--title {
+    font: 600 14px/1 var(--watts-ssb);
+    color: var(--watts-text-2);
+}
+
+#settings-page .watts-guest--desc {
+    font: 400 12px/1.4 var(--watts-body);
+    color: var(--watts-text-faint);
+    margin-top: 3px;
+}
+
+#settings-page .watts-signedin--body { flex: 1; }
+
+/* #profile is display:none until auth-forms marks it .active (signed in) */
+#settings-page #profile.active {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Connections card */
+
+#settings-page .watts-connections o-auth {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+#settings-page .watts-conn--row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--watts-sunken);
+    border: 1px solid var(--watts-border);
+    border-radius: 11px;
+    padding: 12px 14px;
+}
+
+#settings-page .watts-conn--icon {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+}
+
+#settings-page .watts-conn--name {
+    flex: 1;
+    font: 600 14px/1 var(--watts-ssb);
+    color: var(--watts-text);
+    margin: 0;
+}
+
+#settings-page .watts-conn--logo {
+    height: 20px;
+    flex: 1;
+    min-width: 0;
+    object-fit: contain;
+    object-position: left;
+}
+
+/* ---------- ANT+ device request dialog (WATTS surfaces) ---------- */
+
+#ant-device-request.active {
+    display: grid;
+    place-items: start center;
+    position: fixed;
+    inset: 0;
+    width: auto;
+    z-index: 60;
+    background: rgba(8,10,14,.6);
+    padding-top: calc(var(--watts-topnav-h) + 24px);
+}
+
+#ant-device-request .device-request--wrapper {
+    width: 34em;
+    max-width: calc(100vw - 32px);
+    background: var(--watts-panel);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 16px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.5);
+    overflow: hidden;
+}
+
+#ant-device-request .device-request--item {
+    border-bottom: 1px solid var(--watts-border);
+    font: 500 14px/1 var(--watts-ssb);
+    color: var(--watts-text-2);
+}
+
+#ant-device-request .device-request--item.active {
+    background: rgba(200,246,81,.08);
+    color: var(--watts-text);
+}
+
+#ant-device-request .device-request--controls {
+    border-top: 1px solid var(--watts-border);
+}
+
+#ant-device-request .device-request--status {
+    font: 600 12px/1 var(--watts-ssb);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--watts-text-mut);
+}
+
+#ant-device-request .device-request--cancel,
+#ant-device-request .device-request--pair {
+    padding: 10px 18px;
+    border-radius: 9px;
+    border: 1px solid rgba(255,255,255,.1);
+    font: 600 13px/1 var(--watts-ssb);
+    cursor: pointer;
+}
+
+#ant-device-request .device-request--cancel {
+    background: var(--watts-chip);
+    color: var(--watts-text-2);
+}
+
+#ant-device-request .device-request--pair {
+    background: var(--watts-accent);
+    border-color: transparent;
+    color: var(--watts-bg);
+    font-weight: 700;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+    #settings-page .watts-set--toprow { grid-template-columns: 1fr; }
+    #settings-page .watts-devices { grid-template-columns: 1fr; }
+    #settings-page .watts-acct { grid-template-columns: 1fr; }
+    #settings-page .watts-acct form { max-width: none; }
+}
+
+@media (max-width: 640px) {
+    #settings-page .watts-set { padding: 8px 16px 40px; }
+    #settings-page .watts-rider--row { gap: 16px; }
+    #settings-page .watts-rider--input,
+    #settings-page .watts-rider--value { font-size: 36px; }
+}

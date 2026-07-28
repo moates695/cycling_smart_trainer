@@ -10,6 +10,7 @@ import {
     segmentsToZwo,
     snapDuration,
     snapPower,
+    powerToZoneIndex,
     copyName,
 } from '../../src/workouts/designer-model.js';
 
@@ -25,6 +26,22 @@ describe('snapping', () => {
         expect(snapPower(0.884)).toBe(0.88);
         expect(snapPower(0.886)).toBe(0.89);
         expect(snapPower(-0.2)).toBe(0);
+    });
+});
+
+describe('powerToZoneIndex', () => {
+    test('maps Coggan boundaries to zones 1-7 (upper edge inclusive)', () => {
+        expect(powerToZoneIndex(0)).toBe(1);
+        expect(powerToZoneIndex(0.55)).toBe(1);
+        expect(powerToZoneIndex(0.56)).toBe(2);
+        expect(powerToZoneIndex(0.75)).toBe(2);
+        expect(powerToZoneIndex(0.88)).toBe(3);
+        expect(powerToZoneIndex(0.90)).toBe(3);
+        expect(powerToZoneIndex(1.05)).toBe(4);
+        expect(powerToZoneIndex(1.20)).toBe(5);
+        expect(powerToZoneIndex(1.50)).toBe(6);
+        expect(powerToZoneIndex(1.51)).toBe(7);
+        expect(powerToZoneIndex(3)).toBe(7);
     });
 });
 

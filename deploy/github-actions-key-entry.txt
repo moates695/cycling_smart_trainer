@@ -1,0 +1,1 @@
+command="/usr/bin/rrsync /var/www/watts",restrict ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDnyUKUtG5srs4zbXMPN5haJwkfWp2WuSzc7IuzuDrNi github-actions-deploy-watts

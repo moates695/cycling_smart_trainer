@@ -150,6 +150,7 @@ function Auth(args = {}) {
 
             if(json?.result?.success) {
                 console.log(`:api :login :success`);
+                xf.dispatch('account:email', data.email);
                 xf.dispatch('action:auth', ':password:profile');
                 status();
                 return;
@@ -175,6 +176,7 @@ function Auth(args = {}) {
             const result = await response.json();
 
             console.log(`:api :logout :success`);
+            xf.dispatch('account:email', '');
             xf.dispatch('action:auth', ':password:logout');
 
             _loggedIn = false;

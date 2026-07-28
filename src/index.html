@@ -18,6 +18,9 @@
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
         <link href="css/flux.css" rel="stylesheet"/>
+        <link href="css/watts-settings.css" rel="stylesheet"/>
+        <link href="css/watts-workouts.css" rel="stylesheet"/>
+        <link href="css/watts-editor.css" rel="stylesheet"/>
         <link rel="manifest" href="./manifest.webmanifest">
     </head>
 
@@ -138,6 +141,7 @@
                                 <div class="watts-profile--head">
                                     <div class="watts-zoom">
                                         <div id="profile-zoom-out" class="watts-zoom--btn" title="Zoom out">−</div>
+                                        <div id="profile-zoom-value" class="watts-zoom--value">1.0×</div>
                                         <div id="profile-zoom-in" class="watts-zoom--btn" title="Zoom in">+</div>
                                         <div id="profile-zoom-fit" class="watts-zoom--btn watts-zoom--txt" title="Zoom to fit">FIT</div>
                                         <div id="profile-zoom-now" class="watts-zoom--btn watts-zoom--now" title="Scroll to current position">⌖ NOW</div>
@@ -156,7 +160,7 @@
                                         <span style="bottom:-2px;"><b>0%</b><i></i></span>
                                     </div>
                                     <div id="graph-workout" class="graph watts-profile--plot">
-                                        <auto-start-counter class="watts-autostart">3</auto-start-counter>
+                                        <pedal-to-start class="watts-pedalhint">Pedal to start</pedal-to-start>
                                         <workout-graph class="workout--graph-cont" prop="workout" metric="ftp"></workout-graph>
                                     </div>
                                     <div class="watts-profile--axis watts-profile--axis-r watts-profile--axis-hr">
@@ -203,18 +207,19 @@
 
                                 <div class="watts-erg-label">ERG</div>
 
-                                <power-target-control id="power-control-btn" class="watts-stepper">
-                                    <button id="power-target-dec" class="watts-stepper--btn">−</button>
+                                <workout-intensity-control id="workout-intensity-btn" class="watts-stepper" title="Workout intensity">
+                                    <button id="workout-intensity-dec" class="watts-stepper--btn">−</button>
                                     <div class="watts-stepper--value-cont">
-                                        <input id="power-target-input"
+                                        <input id="workout-intensity-input"
                                                class="watts-stepper--value"
                                                type="number"
-                                               value="0"
+                                               min="25" max="200" step="1"
+                                               value="100"
                                                autocomplete="off"/>
-                                        <span class="watts-stepper--unit">W</span>
+                                        <span class="watts-stepper--unit">%</span>
                                     </div>
-                                    <button id="power-target-inc" class="watts-stepper--btn watts-stepper--inc">+</button>
-                                </power-target-control>
+                                    <button id="workout-intensity-inc" class="watts-stepper--btn watts-stepper--inc">+</button>
+                                </workout-intensity-control>
 
                                 <mode-lock-toggle class="watts-lock">
                                     <svg class="mode-lock--toggle--icon" width="22" height="22">
@@ -228,74 +233,88 @@
             </div> <!-- end page-home -->
 
             <div id="workouts-page" class="page" page="workouts">
-                <div class="library--switch--group">
-                    <navigation-action
-                        id="link--workouts-workouts"
-                        class="library--switch--heading active"
-                        action="workouts:workouts"
-                        topic=":nav"
-                    >Workouts
-                    </navigation-action>
-                    <navigation-action
-                        id="link--workouts-editor"
-                        class="library--switch--heading"
-                        action="workouts:editor"
-                        topic=":nav"
-                    >Editor
-                    </navigation-action>
-                </div>
-                <!-- graphical workout designer (the Editor sub-tab) -->
-                <workout-designer id="view--workouts-editor" class="sub-tab"></workout-designer>
+                <div class="watts-workouts">
 
-                <!-- workout-list -->
-                <div id="view--workouts-workouts" class="workout-list sub-tab active">
+                    <!-- library tab bar: My Workouts | Default | Completed | Editor -->
+                    <nav class="watts-wtabs" aria-label="Workout library">
+                        <navigation-action
+                            id="link--workouts-workouts"
+                            class="watts-wtab active"
+                            action="workouts:workouts"
+                            topic=":nav">My Workouts</navigation-action>
+                        <navigation-action
+                            id="link--workouts-default"
+                            class="watts-wtab"
+                            action="workouts:default"
+                            topic=":nav">Default</navigation-action>
+                        <navigation-action
+                            id="link--workouts-completed"
+                            class="watts-wtab"
+                            action="workouts:completed"
+                            topic=":nav">Completed</navigation-action>
+                        <navigation-action
+                            id="link--workouts-editor"
+                            class="watts-wtab"
+                            action="workouts:editor"
+                            topic=":nav">Editor</navigation-action>
+                    </nav>
 
-                    <!-- my workouts -->
-                    <details class="list--sub-section list--collapsible" open>
-                        <summary class="list--sub-heading">My workouts</summary>
-                        <div class="user-workouts">
-                            <workout-list class="workout-list list" filter="user" prop="workouts" metric="ftp">
-                            </workout-list>
-                        </div>
-                    </details>
+                    <!-- graphical workout designer (the Editor sub-tab) -->
+                    <workout-designer id="view--workouts-editor" class="sub-tab"></workout-designer>
 
-                    <!-- default workouts (read-only) -->
-                    <details class="list--sub-section list--collapsible" open>
-                        <summary class="list--sub-heading">Default workouts</summary>
-                        <div class="buildin-workouts">
-                            <workout-list class="workout-list list" filter="default" prop="workouts" metric="ftp">
-                            </workout-list>
-                        </div>
-                    </details>
-
-                    <!-- activities -->
-                    <details class="list--sub-section list--collapsible" open>
-                        <summary class="list--sub-heading">Activities</summary>
-                        <activity-list class="activity--list">
-                        </activity-list>
-                    </details>
-
-                    <div class="workout-loader">
-                        <h2 class="page--heading">Load workout:</h2>
-                        <div class="file-btn">
-                            <input is="workout-upload"
-                                   id="workout-file"
-                                   class="file-btn-native"
-                                   name="workout-file"
-                                   type="file"
-                                   accept=".zwo,.fit"
-                                   multiple
-                                   value="" />
-
-                        </div>
-
-                        <div class="workout-loader--note">
-                            <p class="p">You can load a .zwo workout or a .fit Course file.</p>
-                            <p>NOTE: .fit workouts and gpx files are currently NOT supported.</p>
-                        </div>
+                    <!-- My Workouts -->
+                    <div id="view--workouts-workouts" class="sub-tab active watts-wsection">
+                        <header class="watts-wsection--head">
+                            <div>
+                                <h1 class="watts-wsection--title">My Workouts</h1>
+                                <p class="watts-wsection--sub">Your saved sessions. Load a file or build one in the Editor.</p>
+                            </div>
+                            <div class="watts-wsection--actions">
+                                <label class="watts-btn watts-btn--accent" for="workout-file">Load Workout
+                                    <input is="workout-upload"
+                                           id="workout-file"
+                                           class="watts-file-input"
+                                           name="workout-file"
+                                           type="file"
+                                           accept=".zwo,.fit"
+                                           multiple
+                                           value="" />
+                                </label>
+                                <navigation-action
+                                    class="watts-btn watts-btn--chip"
+                                    action="workouts:editor"
+                                    topic=":nav">New in Editor</navigation-action>
+                            </div>
+                        </header>
+                        <p class="watts-wsection--note">Accepts <b>.zwo</b> workouts and <b>.fit</b> course files.</p>
+                        <workout-list class="watts-wlist" filter="user" prop="workouts" metric="ftp">
+                        </workout-list>
                     </div>
-                    <br/><br/><br/>
-                </div> <!-- workout-list -->
+
+                    <!-- Default workouts (read-only) -->
+                    <div id="view--workouts-default" class="sub-tab watts-wsection">
+                        <h1 class="watts-wsection--title">Default Workouts</h1>
+                        <workout-list class="watts-wlist" filter="default" prop="workouts" metric="ftp">
+                        </workout-list>
+                    </div>
+
+                    <!-- Completed workouts (recorded activities) -->
+                    <div id="view--workouts-completed" class="sub-tab watts-wsection">
+                        <h1 class="watts-wsection--title">Completed Workouts</h1>
+                        <p class="watts-wsection--sub watts-wsection--sub-solo">Your ride history and saved activities.</p>
+                        <div class="watts-alist--head">
+                            <div>Workout</div>
+                            <div>Duration</div>
+                            <div>Avg Power</div>
+                            <div>NP · TSS</div>
+                            <div>Avg HR</div>
+                            <div></div>
+                        </div>
+                        <activity-list class="watts-alist">
+                        </activity-list>
+                    </div>
+
+                </div> <!-- end watts-workouts -->
             </div>
 
             <div id="settings-page" class="page" page="settings">
@@ -316,862 +335,680 @@
                         </div> <!-- end device-request--controls -->
                     </div> <!-- end device-request--wrapper -->
                 </ant-device-request> <!-- end ant-device-request -->
-                <header class="page--header header--tab--group">
+                <div class="watts-set">
+                <header class="watts-set--tabs">
                     <navigation-action
                         id="link--settings-settings"
-                        class="library--switch--heading active"
-                        action="settings:settings" topic=":nav">Settings
+                        class="watts-set--tab active"
+                        action="settings:settings" topic=":nav">Trainer
                     </navigation-action>
                     <navigation-action
                         id="link--settings-profile"
-                        class="library--switch--heading"
-                        action="settings:profile" topic=":nav">Profile
+                        class="watts-set--tab"
+                        action="settings:profile" topic=":nav">Account
                     </navigation-action>
                 </header>
-                <!-- profile--sub-tab -->
+                <!-- profile--sub-tab (Account) -->
                 <div id="view--settings-profile" class="sub-tab">
-                    <!-- auth -->
-                    <div class="auth">
-                        <auth-forms>
-                            <div id="password--forms" class="active">
-                                <form id="register--form" class="register--form">
-                                    <h2 class="form--header">Register</h2>
-                                    <div>
-                                        <input id="register--email--input"
-                                            class="input"
-                                            name="email"
-                                            type="email"
-                                            placeholder="Email"
-                                            value=""
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <input id="register--password--input"
-                                            class="input"
-                                            name="password"
-                                            type="password"
-                                            pattern=".{8,64}"
-                                            title="8 characters minimum"
-                                            placeholder="Password"
-                                            value=""
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <input id="register--password-confirmation--input"
-                                            class="input"
-                                            name="password_confirmation"
-                                            pattern=".{8,64}"
-                                            title="8 characters minimum"
-                                            placeholder="Confirm Password"
-                                            type="password"
-                                            value=""
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <input class="input" name="username" type="text" value="" placeholder="Username" autocomplete="off" />
-                                    </div>
-                                    <div class="form--submit--section">
-                                        <button id="register--submit"
-                                                class="btn"
-                                                type="submit">Register</button>
-
-                                        <view-action action=":password:login" topic=":auth">
-                                            <div class="tab--button"
-                                                    index="1">Login instead</div>
-                                        </view-action>
-                                    </div>
-                                </form>
-                                <form id="login--form" class="login--form active">
-                                    <h2 class="form--header">Login</h2>
-                                    <div>
-                                        <input id="login--email--input"
-                                            class="input"
-                                            name="email"
-                                            type="email"
-                                            placeholder="Email"
-                                            value=""
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <input id="login--password--input"
-                                            class="input"
-                                            name="password"
-                                            type="Password"
-                                            pattern=".{8,64}"
-                                            title="8 characters minimum"
-                                            placeholder="Password"
-                                            value=""
-                                            required
-                                        />
-                                    </div>
-                                    <div class="form--submit--section">
+                    <div class="watts-acct">
+                        <!-- sign-in column -->
+                        <div class="auth watts-acct--signin watts-set--card watts-set--card-grad">
+                            <auth-forms>
+                                <div id="password--forms" class="active">
+                                    <form id="login--form" class="login--form active">
+                                        <h2 class="watts-set--eyebrow">Sign in to WATTS</h2>
+                                        <p class="watts-acct--sub">Sync your FTP, workouts and ride history across devices.</p>
+                                        <div class="watts-field">
+                                            <label class="watts-field--label" for="login--email--input">Email</label>
+                                            <input id="login--email--input"
+                                                class="input"
+                                                name="email"
+                                                type="email"
+                                                placeholder="you@example.com"
+                                                value=""
+                                                required
+                                            />
+                                        </div>
+                                        <div class="watts-field">
+                                            <div class="watts-field--row">
+                                                <label class="watts-field--label" for="login--password--input">Password</label>
+                                                <view-action action=":password:forgot" topic=":auth">
+                                                    <span class="watts-acct--link">Forgot?</span>
+                                                </view-action>
+                                            </div>
+                                            <input id="login--password--input"
+                                                class="input"
+                                                name="password"
+                                                type="Password"
+                                                pattern=".{8,64}"
+                                                title="8 characters minimum"
+                                                placeholder="••••••••"
+                                                value=""
+                                                required
+                                            />
+                                        </div>
                                         <button id="login--submit"
-                                                class="btn"
-                                                type="submit">Login</button>
-
-                                        <view-action action=":password:register" topic=":auth">
-                                            <div class="tab--button">Register</div>
-                                        </view-action>
-                                        <view-action action=":password:forgot" topic=":auth">
-                                            <div class="tab--button">Forgot</div>
-                                        </view-action>
-                                    </div>
-                                </form>
-                                <form id="forgot--form" class="forgot--form">
-                                    <h2 class="form--header">Forgot</h2>
-                                    <div>
-                                        <input id="forgot--email--input"
-                                            class="input"
-                                            name="email"
-                                            type="email"
-                                            placeholder="Email"
-                                            value=""
-                                            required
-                                        />
-                                    </div>
-                                    <div class="form--submit--section">
+                                                class="watts-btn-accent"
+                                                type="submit">Sign In</button>
+                                        <div class="watts-acct--alt">New here?
+                                            <view-action action=":password:register" topic=":auth">
+                                                <span class="watts-acct--link">Create an account</span>
+                                            </view-action>
+                                        </div>
+                                    </form>
+                                    <form id="register--form" class="register--form">
+                                        <h2 class="watts-set--eyebrow">Create your WATTS account</h2>
+                                        <p class="watts-acct--sub">Your FTP, workouts and history — on every device.</p>
+                                        <div class="watts-field">
+                                            <label class="watts-field--label" for="register--email--input">Email</label>
+                                            <input id="register--email--input"
+                                                class="input"
+                                                name="email"
+                                                type="email"
+                                                placeholder="you@example.com"
+                                                value=""
+                                                required
+                                            />
+                                        </div>
+                                        <div class="watts-field">
+                                            <label class="watts-field--label" for="register--password--input">Password</label>
+                                            <input id="register--password--input"
+                                                class="input"
+                                                name="password"
+                                                type="password"
+                                                pattern=".{8,64}"
+                                                title="8 characters minimum"
+                                                placeholder="8 characters minimum"
+                                                value=""
+                                                required
+                                            />
+                                        </div>
+                                        <div class="watts-field">
+                                            <label class="watts-field--label" for="register--password-confirmation--input">Confirm password</label>
+                                            <input id="register--password-confirmation--input"
+                                                class="input"
+                                                name="password_confirmation"
+                                                pattern=".{8,64}"
+                                                title="8 characters minimum"
+                                                placeholder="Repeat password"
+                                                type="password"
+                                                value=""
+                                                required
+                                            />
+                                        </div>
+                                        <input class="input" name="username" type="text" value="" placeholder="Username" autocomplete="off" />
+                                        <button id="register--submit"
+                                                class="watts-btn-accent"
+                                                type="submit">Create Account</button>
+                                        <div class="watts-acct--alt">Already have an account?
+                                            <view-action action=":password:login" topic=":auth">
+                                                <span class="watts-acct--link">Sign in</span>
+                                            </view-action>
+                                        </div>
+                                    </form>
+                                    <form id="forgot--form" class="forgot--form">
+                                        <h2 class="watts-set--eyebrow">Reset password</h2>
+                                        <p class="watts-acct--sub">We'll email you a link to reset your password.</p>
+                                        <div class="watts-field">
+                                            <label class="watts-field--label" for="forgot--email--input">Email</label>
+                                            <input id="forgot--email--input"
+                                                class="input"
+                                                name="email"
+                                                type="email"
+                                                placeholder="you@example.com"
+                                                value=""
+                                                required
+                                            />
+                                        </div>
                                         <button id="forgot--submit"
-                                                class="btn"
-                                                type="submit">Forgot</button>
-                                        <view-action action=":password:login" topic=":auth">
-                                            <div class="tab--button">Login instead</div>
-                                        </view-action>
-                                    </div>
-                                    <div id="forgot--msg"></div>
-                                </form>
-                                <form id="reset--form" class="reset--form">
-                                    <h2 class="form--header">Reset</h2>
-                                    <div>
-                                        <input id="reset--password--input"
-                                            class="input"
-                                            name="password"
-                                            type="password"
-                                            pattern=".{8,64}"
-                                            title="8 characters minimum"
-                                            placeholder="Password"
-                                            value=""
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <input id="reset--password-confirmation--input"
-                                            class="input"
-                                            name="password_confirmation"
-                                            pattern=".{8,64}"
-                                            title="8 characters minimum"
-                                            placeholder="Confirm Password"
-                                            type="password"
-                                            value=""
-                                            required
-                                        />
-                                    </div>
-                                    <div class="form--submit--section">
+                                                class="watts-btn-accent"
+                                                type="submit">Send Reset Link</button>
+                                        <div id="forgot--msg" class="watts-acct--msg"></div>
+                                        <div class="watts-acct--alt">
+                                            <view-action action=":password:login" topic=":auth">
+                                                <span class="watts-acct--link">Back to sign in</span>
+                                            </view-action>
+                                        </div>
+                                    </form>
+                                    <form id="reset--form" class="reset--form">
+                                        <h2 class="watts-set--eyebrow">Choose a new password</h2>
+                                        <div class="watts-field">
+                                            <label class="watts-field--label" for="reset--password--input">New password</label>
+                                            <input id="reset--password--input"
+                                                class="input"
+                                                name="password"
+                                                type="password"
+                                                pattern=".{8,64}"
+                                                title="8 characters minimum"
+                                                placeholder="8 characters minimum"
+                                                value=""
+                                                required
+                                            />
+                                        </div>
+                                        <div class="watts-field">
+                                            <label class="watts-field--label" for="reset--password-confirmation--input">Confirm password</label>
+                                            <input id="reset--password-confirmation--input"
+                                                class="input"
+                                                name="password_confirmation"
+                                                pattern=".{8,64}"
+                                                title="8 characters minimum"
+                                                placeholder="Repeat password"
+                                                type="password"
+                                                value=""
+                                                required
+                                            />
+                                        </div>
                                         <button id="reset--submit"
-                                                class="btn"
-                                                type="submit">Reset</button>
-                                        <view-action action=":password:login" topic=":auth">
-                                            <div class="tab--button">Login instead</div>
-                                        </view-action>
+                                                class="watts-btn-accent"
+                                                type="submit">Reset Password</button>
+                                        <div class="watts-acct--alt">
+                                            <view-action action=":password:login" topic=":auth">
+                                                <span class="watts-acct--link">Back to sign in</span>
+                                            </view-action>
+                                        </div>
+                                    </form>
+                                    <!-- turnstile -->
+                                    <div
+                                        id="cf-turnstile-container"
+                                        class="cf-turnstile"
+                                    >
+                                    </div> <!-- END turnstile -->
+                                </div> <!-- END password--forms -->
+                                <div id="auth-error--section" class="error">
+                                </div>
+                            </auth-forms>
+                        </div><!-- END sign-in column -->
+
+                        <!-- benefits + status column -->
+                        <div class="watts-acct--right">
+                            <div class="watts-set--card watts-why">
+                                <h2 class="watts-set--eyebrow">Why sign in</h2>
+                                <div class="watts-why--list">
+                                    <div class="watts-why--item">
+                                        <span class="watts-why--icon">↻</span>
+                                        <div>
+                                            <div class="watts-why--title">Cloud sync</div>
+                                            <div class="watts-why--desc">Workouts and settings follow you to any device.</div>
+                                        </div>
                                     </div>
-                                </form>
-                                <!-- turnstile -->
-                                <div
-                                    id="cf-turnstile-container"
-                                    class="cf-turnstile"
-                                >
-                                </div> <!-- END turnstile -->
-                            </div> <!-- END password--forms -->
-                            <div id="auth-error--section" class="error">
+                                    <div class="watts-why--item">
+                                        <span class="watts-why--icon">↥</span>
+                                        <div>
+                                            <div class="watts-why--title">Auto-upload activities</div>
+                                            <div class="watts-why--desc">Completed rides export to Strava &amp; intervals.icu.</div>
+                                        </div>
+                                    </div>
+                                    <div class="watts-why--item">
+                                        <span class="watts-why--icon">◷</span>
+                                        <div>
+                                            <div class="watts-why--title">Training history</div>
+                                            <div class="watts-why--desc">Track FTP progression and load over time.</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </auth-forms>
-                    </div><!-- END auth -->
-
-                    <!-- profile -->
-                    <div id="profile" class="profile">
-                        <div>
-                            <button id="logout--button"
-                                    class="btn"
-                                    type="button">Logout</button>
-
-                        </div>
-                        <div class="list--sub-section app-connections">
-                            <o-auth>
-                                <div class="list--row--outer">
-                                    <div class="list--row--inner list--heading--cont">
-                                        <h2 class="list--sub-heading">Connections</h2>
-                                    </div>
+                            <!-- guest status (hidden once #profile goes active) -->
+                            <div class="watts-set--card watts-guest-card">
+                                <div class="watts-guest--avatar">?</div>
+                                <div>
+                                    <div class="watts-guest--title">Not signed in</div>
+                                    <div class="watts-guest--desc">Riding as a guest — data stays on this device.</div>
                                 </div>
-                                <div class="list--row--outer">
-                                    <div class="app-connection icon list--row--inner intervals">
-                                        <svg class="app-connection--icon">
-                                            <use href="#icon--intervals"></use>
-                                        </svg>
-                                        <h3 class="app-connection--heading">Intervals.icu</h3>
-
-                                        <view-action action=":intervals:switch"
-                                                     topic=":oauth">
-                                            <div
-                                                id="intervals--connect--button"
-                                                class="app-connection--button">
-                                               Connect
-                                            </div>
-                                        </view-action>
+                            </div>
+                            <!-- profile: auth-forms marks this .active when signed in -->
+                            <div id="profile" class="profile">
+                                <div class="watts-set--card watts-signedin-card">
+                                    <div class="watts-guest--avatar signedin">✓</div>
+                                    <div class="watts-signedin--body">
+                                        <div class="watts-guest--title">Signed in</div>
+                                        <div class="watts-guest--desc">Your rides and settings sync to your account.</div>
                                     </div>
+                                    <button id="logout--button"
+                                            class="watts-btn-chip"
+                                            type="button">Logout</button>
                                 </div>
-                                <!-- <div class="list--row--outer">
-                                     <div class="app-connection icon list--row--inner tp">
-                                     <div class="tp-logo">TP</div>
-                                     <h3 class="app-connection--heading">TrainingPeaks</h3>
-                                     <view-action action=":trainingPeaks:switch"
-                                     topic=":oauth">
-                                     <div
-                                     id="tp--connect--button"
-                                     class="app-connection--button">
-                                     Connect
-                                     </div>
-                                     </view-action>
-                                     </div>
-                                     </div> -->
-                                <div class="list--row--outer strava">
-                                    <div class="list--row--inner app-connection logo">
-                                        <!-- <img class="app-connection--logo"
-                                             alt=""
-                                             src="./images/connections/btn_strava_connectwith_orange.svg" /> -->
-                                        <img class="app-connection--logo"
-                                             alt=""
-                                             src="./images/connections/powered-by-strava-logo.svg" />
-                                        <view-action action=":strava:switch"
-                                                     topic=":oauth">
-                                            <div
-                                                id="strava--connect--button"
-                                                class="app-connection--button">
-                                                Connect
-                                            </div>
-                                        </view-action>
-                                    </div>
-                                </div>
-
-
-
-                                <div class="list--row--outer">
-                                    <div class="app-connection icon list--row--inner">
-                                        <img class="app-connection--icon" alt="GC" src="images/connections/garmin-connect.png"/>
-                                        <h3 class="app-connection--heading">Garmin</h3>
-                                        <a class="app-connection--button app-connection--link a"
-                                           href="https://connect.garmin.com/modern/import-data"
-                                           target="_blank">Import</a>
-                                    </div>
-                                </div>
-                            </o-auth>
-                        </div> <!-- end connections -->
-                    </div> <!-- end profile -->
-
+                                <div class="watts-set--card watts-connections">
+                                    <h2 class="watts-set--eyebrow">Connections</h2>
+                                    <o-auth>
+                                        <div class="watts-conn--row intervals">
+                                            <svg class="watts-conn--icon">
+                                                <use href="#icon--intervals"></use>
+                                            </svg>
+                                            <h3 class="watts-conn--name">Intervals.icu</h3>
+                                            <view-action action=":intervals:switch"
+                                                         topic=":oauth">
+                                                <div
+                                                    id="intervals--connect--button"
+                                                    class="watts-btn-chip">
+                                                   Connect
+                                                </div>
+                                            </view-action>
+                                        </div>
+                                        <div class="watts-conn--row strava">
+                                            <img class="watts-conn--logo"
+                                                 alt="Powered by Strava"
+                                                 src="./images/connections/powered-by-strava-logo.svg" />
+                                            <view-action action=":strava:switch"
+                                                         topic=":oauth">
+                                                <div
+                                                    id="strava--connect--button"
+                                                    class="watts-btn-chip">
+                                                    Connect
+                                                </div>
+                                            </view-action>
+                                        </div>
+                                        <div class="watts-conn--row garmin">
+                                            <img class="watts-conn--icon" alt="GC" src="images/connections/garmin-connect.png"/>
+                                            <h3 class="watts-conn--name">Garmin</h3>
+                                            <a class="watts-btn-chip"
+                                               href="https://connect.garmin.com/modern/import-data"
+                                               target="_blank">Import</a>
+                                        </div>
+                                    </o-auth>
+                                </div> <!-- end connections -->
+                            </div> <!-- end profile -->
+                        </div> <!-- end watts-acct--right -->
+                    </div> <!-- end watts-acct -->
                 </div> <!-- end profile--sub-tab -->
 
-                <!-- settings--sub-tab -->
+                <!-- settings--sub-tab (Trainer) -->
                 <div id="view--settings-settings" class="sub-tab active">
-                    <div class="settings-tiles--cont">
-                        <div id="ftp-settings" class="settings-tile">
-                            <label for="ftp-value" class="settings-tile--label">FTP</label>
-                            <input is="int-input"
-                                id="ftp-value"
-                                class="settings-tile--input"
-                                name="ftp-value"
-                                type="number"
-                                value="200"
-                                prop="ftp"
-                                effect="ftp-set" />
-                            <button is="set-button"
-                                    id="ftp-btn"
-                                    class="settings-tile--btn flat-btn"
-                                    default="200"
-                                    effect="ftp-set"
-                                    prop="ftp">Set</button>
-                        </div>
-                        <div id="weight-settings" class="settings-tile">
-                            <label id="weight-label" for="weight-value" class="settings-tile--label">
-                                <measurement-unit type="weight">kg</measurement-unit>
-                            </label>
-                            <input is="weight-input"
-                                id="weight-value"
-                                class="settings-tile--input"
-                                name="weight-value"
-                                type="number"
-                                value="75"
-                                prop="weight"
-                                effect="weight-set" />
-                            <button is="set-button"
-                                    id="weight-btn"
-                                    class="settings-tile--btn flat-btn"
-                                    default="75"
-                                    effect="weight-set"
-                                    prop="weight">Set</button>
-                        </div>
-                    </div>
-                    <div class="settings-btn-row">
-
-                        <dock-mode-btn class="flat-btn settings-switch-btn-cont">
-                            <div class="settings-switch-bnt">Dock</div>
-                        </dock-mode-btn>
-
-                        <button is="effect-button"
-                                id="msystem-settings"
-                                class="flat-btn settings-switch-btn-cont"
-                                effect="measurement-switch">
-                            <measurement-value id="measurement-btn"
-                                            class="settings-switch-bnt">Metric</measurement-value>
-                        </button>
-                    </div> <!-- end settings btn row -->
-
-                    <!-- protocol-settings -->
-                    <!-- <div class="protocol-settings settings-btn-row">
-                         <div class="protocol-btn flat-btn settings-switch-btn-cont">
-                         <svg class="protocol-btn--icon icon">
-                         <use href="#icon--bluetooth"></use>
-                         </svg>
-                         <span class="protocol-btn--label">BLE</span>
-                         </div>
-
-                         <div class="protocol-btn flat-btn settings-switch-btn-cont">
-                         <protocol-switch for="ant:driver" id="switch-controllable" class="protocol-switch ant-switch off">
-                         <svg class="protocol-btn--icon icon" xmlns="http://www.w3.org/2000/svg"
-                         height="24" viewBox="0 0 24 24" width="24">
-                         <path d="M22 9V7h-2V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2v-2h-2V9h2zm-4 10H4V5h14v14zM6 13h5v4H6zm6-6h4v3h-4zM6 7h5v5H6zm6 4h4v6h-4z"/>
-                         <path d="M0 0h24v24H0zm0 0h24v24H0z" fill="none"/>
-                         </svg>
-                         <span class="connection-switch--label protocol-btn--label">ANT+</span>
-                         </protocol-switch>
-                         </div>
-                         </div> -->
-                    <!-- end protocol-settings -->
-
-                    <!-- controlable settings -->
-                    <div class="device-card border-top">
-                        <div class="device-card--cont">
-                            <div class="device-card--header">
-                                <div></div>
-                                <div class="device-card--header--label">Controllable</div>
-                                <div></div>
-                            </div>
-
-                            <div class="device-card--body">
-                                <div class="device-card--body--row">
-                                    <connection-switch for="ble:controllable"
-                                                    indicatorClass="connection-icon-switch--indicator"
-                                                    class="connection-icon-switch">
-
-                                        <svg class="connection-icon-switch--icon icon">
-                                            <use href="#icon--bluetooth"></use>
-                                        </svg>
-                                        <div class="connection-icon-switch--indicator off"></div>
-                                    </connection-switch>
-                                    <div class="device-card--tile name">
-                                        <h3 class="device-card--tile--header">Name</h3>
-                                        <data-view class="device-card--tile--value"
-                                                prop="ble:controllable:name">--</data-view>
+                    <div class="watts-set--toprow">
+                        <!-- Rider Profile -->
+                        <div class="watts-set--card watts-set--card-grad watts-rider">
+                            <h2 class="watts-set--eyebrow">Rider Profile</h2>
+                            <div class="watts-rider--row">
+                                <div id="ftp-settings" class="watts-rider--metric">
+                                    <div class="watts-rider--head">
+                                        <span class="watts-rider--label">FTP</span>
+                                        <label for="ftp-value" class="watts-edit-btn" title="Edit FTP">✎</label>
                                     </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                    for="power"
-                                                    use="ble:controllable">
-                                            <h3 class="device-card--tile--header">Power</h3>
-                                            <power-value class="data-view device-card--tile--value" prop="db:power1s">--</power-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-
-                                        </source-switch>
-                                    </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                       for="cadence"
-                                                       use="ble:controllable">
-                                            <h3 class="device-card--tile--header">Cadence</h3>
-                                            <cadence-value class="data-view device-card--tile--value">--</cadence-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                       for="speed"
-                                                       use="ble:controllable">
-                                            <h3 class="device-card--tile--header">Speed</h3>
-                                            <speed-value class="data-view device-card--tile--value">--</speed-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                       for="heartRate"
-                                                       use="ble:controllable">
-                                            <h3 class="device-card--tile--header">Heart Rate</h3>
-                                            <heart-rate-value class="data-view device-card--tile--value">--</heart-rate-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
+                                    <input is="int-input"
+                                        id="ftp-value"
+                                        class="watts-rider--input accent"
+                                        name="ftp-value"
+                                        type="number"
+                                        value="200"
+                                        prop="ftp"
+                                        effect="ftp-set" />
+                                    <span class="watts-rider--unit">W</span>
                                 </div>
-                                <!-- end ble controllable -->
-
+                                <div class="watts-rider--div"></div>
+                                <div id="weight-settings" class="watts-rider--metric">
+                                    <div class="watts-rider--head">
+                                        <span class="watts-rider--label">Weight</span>
+                                        <label for="weight-value" class="watts-edit-btn" title="Edit weight">✎</label>
+                                    </div>
+                                    <input is="weight-input"
+                                        id="weight-value"
+                                        class="watts-rider--input"
+                                        name="weight-value"
+                                        type="number"
+                                        value="75"
+                                        prop="weight"
+                                        effect="weight-set" />
+                                    <span id="weight-label" class="watts-rider--unit">
+                                        <measurement-unit type="weight">kg</measurement-unit>
+                                    </span>
+                                </div>
+                                <div class="watts-rider--div"></div>
+                                <div class="watts-rider--metric">
+                                    <div class="watts-rider--head">
+                                        <span class="watts-rider--label">FTP / kg</span>
+                                    </div>
+                                    <ftp-per-kg class="watts-rider--value">--</ftp-per-kg>
+                                    <span class="watts-rider--unit">W/kg</span>
+                                </div>
                             </div>
                         </div>
-                    </div> <!-- end controlable settings -->
+                        <!-- Options -->
+                        <div class="watts-set--card watts-options">
+                            <h2 class="watts-set--eyebrow">Options</h2>
+                            <div class="watts-option">
+                                <span class="watts-option--name">Units</span>
+                                <units-switch></units-switch>
+                            </div>
+                            <div class="watts-option">
+                                <span class="watts-option--name">Sound</span>
+                                <volume-slider></volume-slider>
+                            </div>
+                            <div class="watts-option">
+                                <span class="watts-option--name">Lock controls by default</span>
+                                <lock-default-toggle></lock-default-toggle>
+                            </div>
+                            <div class="watts-option">
+                                <span class="watts-option--name">Auto start on pedal</span>
+                                <source-toggle key="autoStart"></source-toggle>
+                            </div>
+                            <div class="watts-option">
+                                <span class="watts-option--name">Auto pause on coast</span>
+                                <source-toggle key="autoPause"></source-toggle>
+                            </div>
+                            <div class="watts-option">
+                                <span class="watts-option--name">Simulation source</span>
+                                <virtual-state-source class="watts-btn-chip">power</virtual-state-source>
+                            </div>
+                        </div>
+                    </div> <!-- end watts-set--toprow -->
 
-                    <!-- power-meter settings -->
-                    <div class="device-card">
-                        <div class="device-card--cont">
-                            <div class="device-card--header">
-                                <div></div>
-                                <div class="device-card--header--label">Power Meter</div>
+                    <h2 class="watts-set--eyebrow watts-devices--label">Connected Devices</h2>
+                    <div class="watts-devices">
+
+                        <!-- controllable -->
+                        <div class="watts-dev">
+                            <div class="watts-dev--head">
+                                <div class="watts-dev--icon">
+                                    <svg><use href="#icon--bluetooth"></use></svg>
+                                </div>
+                                <div class="watts-dev--id">
+                                    <div class="watts-dev--type">Controllable</div>
+                                    <data-view class="watts-dev--name"
+                                            prop="ble:controllable:name">No device paired</data-view>
+                                </div>
+                                <connection-switch for="ble:controllable"
+                                                class="watts-devpill"
+                                                indicatorClass="watts-devpill--ind">
+                                    <span class="watts-devpill--ind off">
+                                        <span class="watts-devpill--dot"></span>
+                                        <span class="watts-devpill--txt"></span>
+                                    </span>
+                                </connection-switch>
+                            </div>
+                            <div class="watts-dev--chips">
+                                <source-switch class="source-switch watts-chip"
+                                            for="power"
+                                            use="ble:controllable">
+                                    <span class="watts-chip--label">Power</span>
+                                    <power-value class="data-view watts-chip--value" prop="db:power1s">--</power-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                                <source-switch class="source-switch watts-chip"
+                                               for="cadence"
+                                               use="ble:controllable">
+                                    <span class="watts-chip--label">Cadence</span>
+                                    <cadence-value class="data-view watts-chip--value">--</cadence-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                                <source-switch class="source-switch watts-chip"
+                                               for="speed"
+                                               use="ble:controllable">
+                                    <span class="watts-chip--label">Speed</span>
+                                    <speed-value class="data-view watts-chip--value">--</speed-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                                <source-switch class="source-switch watts-chip hr"
+                                               for="heartRate"
+                                               use="ble:controllable">
+                                    <span class="watts-chip--label">Heart Rate</span>
+                                    <heart-rate-value class="data-view watts-chip--value">--</heart-rate-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                            </div>
+                        </div> <!-- end controllable -->
+
+                        <!-- power meter -->
+                        <div class="watts-dev">
+                            <div class="watts-dev--head">
+                                <div class="watts-dev--icon">
+                                    <svg><use href="#icon--bluetooth"></use></svg>
+                                </div>
+                                <div class="watts-dev--id">
+                                    <div class="watts-dev--type">Power Meter</div>
+                                    <data-view class="watts-dev--name"
+                                            prop="ble:powerMeter:name">No device paired</data-view>
+                                </div>
                                 <battery-level for="ble:powerMeter">
                                     <div class="battery--level"></div>
                                 </battery-level>
+                                <connection-switch for="ble:powerMeter"
+                                                class="watts-devpill"
+                                                indicatorClass="watts-devpill--ind">
+                                    <span class="watts-devpill--ind off">
+                                        <span class="watts-devpill--dot"></span>
+                                        <span class="watts-devpill--txt"></span>
+                                    </span>
+                                </connection-switch>
                             </div>
-                            <div class="device-card--body">
-                                <div class="device-card--body--row">
-                                    <connection-switch for="ble:powerMeter"
-                                                    id="switch-power-meter"
-                                                    indicatorClass="connection-icon-switch--indicator"
-                                                    class="connection-icon-switch">
-                                        <svg class="connection-icon-switch--icon icon">
-                                            <use href="#icon--bluetooth"></use>
-                                        </svg>
-                                        <div class="connection-icon-switch--indicator off"></div>
-                                    </connection-switch>
-                                    <div class="device-card--tile">
-                                        <h3 class="device-card--tile--header">Name</h3>
-                                        <data-view class="data-view device-card--tile--value"
-                                                prop="ble:powerMeter:name">--</data-view>
-                                    </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                    for="power"
-                                                    use="ble:powerMeter">
-                                            <h3 class="device-card--tile--header">Power</h3>
-                                            <power-value class="data-view device-card--tile--value" prop="db:power1s">--</power-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                       for="cadence"
-                                                       use="ble:powerMeter">
-                                            <h3 class="device-card--tile--header">Cadence</h3>
-                                            <cadence-value class="data-view device-card--tile--value">--</cadence-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                       for="speed"
-                                                       use="ble:powerMeter">
-                                            <h3 class="device-card--tile--header">Speed</h3>
-                                            <speed-value class="data-view device-card--tile--value">--</speed-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
-                                </div>
+                            <div class="watts-dev--chips">
+                                <source-switch class="source-switch watts-chip"
+                                            for="power"
+                                            use="ble:powerMeter">
+                                    <span class="watts-chip--label">Power</span>
+                                    <power-value class="data-view watts-chip--value" prop="db:power1s">--</power-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                                <source-switch class="source-switch watts-chip"
+                                               for="cadence"
+                                               use="ble:powerMeter">
+                                    <span class="watts-chip--label">Cadence</span>
+                                    <cadence-value class="data-view watts-chip--value">--</cadence-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                                <source-switch class="source-switch watts-chip"
+                                               for="speed"
+                                               use="ble:powerMeter">
+                                    <span class="watts-chip--label">Speed</span>
+                                    <speed-value class="data-view watts-chip--value">--</speed-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
                             </div>
-                        </div>
-                    </div> <!-- end power-meter settings -->
+                        </div> <!-- end power meter -->
 
-                    <!-- cycling-speed-and-cadence settings -->
-                    <div class="device-card">
-                        <div class="device-card--cont">
-                            <div class="device-card--header">
-                                <div></div>
-                                <div class="device-card--header--label">Speed and Cadence</div>
+                        <!-- speed & cadence sensor -->
+                        <div class="watts-dev">
+                            <div class="watts-dev--head">
+                                <div class="watts-dev--icon">
+                                    <svg><use href="#icon--bluetooth"></use></svg>
+                                </div>
+                                <div class="watts-dev--id">
+                                    <div class="watts-dev--type">Speed &amp; Cadence</div>
+                                    <data-view class="watts-dev--name"
+                                            prop="ble:speedCadenceSensor:name">No device paired</data-view>
+                                </div>
                                 <battery-level for="ble:speedCadenceSensor">
                                     <div class="battery--level"></div>
                                 </battery-level>
+                                <connection-switch for="ble:speedCadenceSensor"
+                                                class="watts-devpill"
+                                                indicatorClass="watts-devpill--ind">
+                                    <span class="watts-devpill--ind off">
+                                        <span class="watts-devpill--dot"></span>
+                                        <span class="watts-devpill--txt"></span>
+                                    </span>
+                                </connection-switch>
                             </div>
-                            <div class="device-card--body">
-                                <div class="device-card--body--row">
-                                    <connection-switch for="ble:speedCadenceSensor"
-                                                    class="connection-icon-switch"
-                                                    indicatorClass="connection-icon-switch--indicator">
-                                        <svg class="connection-icon-switch--icon icon">
-                                            <use href="#icon--bluetooth"></use>
-                                        </svg>
-                                        <div class="connection-icon-switch--indicator off"></div>
-                                    </connection-switch>
-                                    <div class="device-card--tile">
-                                        <h3 class="device-card--tile--header">Name</h3>
-                                        <data-view class="data-view device-card--tile--value"
-                                                prop="ble:speedCadenceSensor:name">--</data-view>
-                                    </div>
-                                    <div class="device-card--tile"></div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                    for="cadence"
-                                                    use="ble:speedCadenceSensor">
-                                            <h3 class="device-card--tile--header">Cadence</h3>
-                                            <cadence-value class="data-view device-card--tile--value">--</cadence-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                       for="speed"
-                                                       use="ble:speedCadenceSensor">
-                                            <h3 class="device-card--tile--header">Speed</h3>
-                                            <speed-value class="data-view device-card--tile--value">--</speed-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
-                                </div>
+                            <div class="watts-dev--chips">
+                                <source-switch class="source-switch watts-chip"
+                                            for="cadence"
+                                            use="ble:speedCadenceSensor">
+                                    <span class="watts-chip--label">Cadence</span>
+                                    <cadence-value class="data-view watts-chip--value">--</cadence-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                                <source-switch class="source-switch watts-chip"
+                                               for="speed"
+                                               use="ble:speedCadenceSensor">
+                                    <span class="watts-chip--label">Speed</span>
+                                    <speed-value class="data-view watts-chip--value">--</speed-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
                             </div>
-                        </div>
-                    </div> <!-- end cycling-speed-and-cadence settings -->
+                        </div> <!-- end speed & cadence sensor -->
 
-                    <!-- hrm settings -->
-                    <div class="device-card">
-                        <div class="device-card--cont">
-                            <div class="device-card--header">
-                                <div></div>
-                                <div class="device-card--header--label">HRM</div>
+                        <!-- heart rate monitor -->
+                        <div class="watts-dev">
+                            <div class="watts-dev--head">
+                                <div class="watts-dev--icon">
+                                    <svg><use href="#icon--bluetooth"></use></svg>
+                                </div>
+                                <div class="watts-dev--id">
+                                    <div class="watts-dev--type">Heart Rate</div>
+                                    <data-view class="watts-dev--name"
+                                            prop="ble:heartRateMonitor:name">No device paired</data-view>
+                                </div>
                                 <battery-level for="ble:heartRateMonitor">
                                     <div class="battery--level"></div>
                                 </battery-level>
+                                <connection-switch for="ble:heartRateMonitor"
+                                                class="watts-devpill"
+                                                indicatorClass="watts-devpill--ind">
+                                    <span class="watts-devpill--ind off">
+                                        <span class="watts-devpill--dot"></span>
+                                        <span class="watts-devpill--txt"></span>
+                                    </span>
+                                </connection-switch>
                             </div>
-                            <div class="device-card--body">
-                                <div class="device-card--body--row">
-                                    <connection-switch for="ble:heartRateMonitor"
-                                                    id="switch-hrm"
-                                                    indicatorClass="connection-icon-switch--indicator"
-                                                    class="connection-icon-switch">
+                            <div class="watts-dev--chips">
+                                <source-switch class="source-switch watts-chip hr"
+                                            for="heartRate"
+                                            use="ble:heartRateMonitor">
+                                    <span class="watts-chip--label">Heart Rate</span>
+                                    <heart-rate-value id="hrm-heartRate"
+                                                    class="data-view watts-chip--value">--</heart-rate-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                                <source-switch class="source-switch watts-chip"
+                                            for="cadence"
+                                            use="ble:heartRateMonitor">
+                                    <span class="watts-chip--label">Cadence</span>
+                                    <cadence-value class="data-view watts-chip--value">--</cadence-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                            </div>
+                            <!-- ANT+ hrm (revealed on platforms with serial support) -->
+                            <div class="watts-dev--antrow ant-not-supported"
+                                id="ant-hrm-settings"
+                            >
+                                <connection-switch for="ant:hrm"
+                                                class="watts-devpill"
+                                                indicatorClass="watts-devpill--ind">
+                                    <span class="watts-devpill--ind off">
+                                        <span class="watts-devpill--dot"></span>
+                                        <span class="watts-devpill--txt"></span>
+                                    </span>
+                                </connection-switch>
+                                <data-view class="watts-dev--name"
+                                        prop="ant:hrm:name">No ANT+ device</data-view>
+                                <source-switch class="source-switch watts-chip hr"
+                                            for="heartRate"
+                                            use="ant:hrm">
+                                    <span class="watts-chip--label">ANT+ HR</span>
+                                    <heart-rate-value id="ant-heartRate"
+                                                    class="data-view watts-chip--value">--</heart-rate-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                            </div> <!-- end ant hrm -->
+                        </div> <!-- end heart rate monitor -->
 
-                                        <svg class="connection-icon-switch--icon icon">
-                                            <use href="#icon--bluetooth"></use>
-                                        </svg>
-                                        <div class="connection-icon-switch--indicator off"></div>
-                                    </connection-switch>
-                                    <div class="device-card--tile">
-                                        <h3 class="device-card--tile--header">Name</h3>
-                                        <data-view class="device-card--tile--value"
-                                                prop="ble:heartRateMonitor:name">--</data-view>
-                                    </div>
-                                    <div class="device-card--tile"></div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                    for="cadence"
-                                                    use="ble:heartRateMonitor">
-                                            <h3 class="device-card--tile--header">Cadence</h3>
-                                            <cadence-value class="data-view device-card--tile--value">--</cadence-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
-                                    <div class="device-card--tile"></div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                    for="heartRate"
-                                                    use="ble:heartRateMonitor">
-                                            <h3 class="device-card--tile--header">Heart Rate</h3>
-                                            <heart-rate-value id="hrm-heartRate"
-                                                            class="data-view device-card--tile--value">--</heart-rate-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
+                        <!-- moxy muscle oxygen monitor -->
+                        <div class="watts-dev">
+                            <div class="watts-dev--head">
+                                <div class="watts-dev--icon">
+                                    <svg><use href="#icon--bluetooth"></use></svg>
                                 </div>
-
-                                <!-- ant hrm -->
-                                <div class="device-card--body--row ant-not-supported"
-                                    id="ant-hrm-settings"
-                                >
-                                    <connection-switch for="ant:hrm"
-                                                    id="switch-hrm"
-                                                    indicatorClass="connection-icon-switch--indicator"
-                                                    class="connection-icon-switch">
-                                        <svg class="connection-icon-switch--icon icon" xmlns="http://www.w3.org/2000/svg"
-                                            height="24"
-                                            viewBox="0 0 24 24"
-                                            width="24">
-                                            <path d="M22 9V7h-2V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2v-2h-2V9h2zm-4 10H4V5h14v14zM6 13h5v4H6zm6-6h4v3h-4zM6 7h5v5H6zm6 4h4v6h-4z"/>
-                                            <path d="M0 0h24v24H0zm0 0h24v24H0z" fill="none"/>
-                                        </svg>
-                                        <div class="connection-icon-switch--indicator off"></div>
-                                    </connection-switch>
-                                    <div class="device-card--tile">
-                                        <h3 class="device-card--tile--header">Name</h3>
-                                        <data-view class="device-card--tile--value"
-                                                prop="ant:hrm:name">--</data-view>
-                                    </div>
-                                    <div class="device-card--tile"></div>
-                                    <div class="device-card--tile"></div>
-                                    <div class="device-card--tile"></div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                    for="heartRate"
-                                                    use="ant:hrm">
-                                            <h3 class="device-card--tile--header">Heart Rate</h3>
-                                            <heart-rate-value id="ant-heartRate"
-                                                            class="data-view device-card--tile--value">--</heart-rate-value>
-                                        </source-switch>
-                                    </div>
-                                </div> <!-- end device-card--body--row -->
-                                <!-- end ant hrm -->
-                            </div>
-                        </div>
-                    </div> <!--end ant hrm settings -->
-
-                    <!-- moxy-monitor settings -->
-                    <div class="device-card">
-                        <div class="device-card--cont">
-                            <div class="device-card--header">
-                                <div></div>
-                                <div class="device-card--header--label">Moxy</div>
+                                <div class="watts-dev--id">
+                                    <div class="watts-dev--type">Muscle Oxygen</div>
+                                    <data-view class="watts-dev--name"
+                                            prop="ble:smo2:name">No device paired</data-view>
+                                </div>
                                 <battery-level for="ble:smo2">
                                     <div class="battery--level"></div>
                                 </battery-level>
+                                <connection-switch for="ble:smo2"
+                                                class="watts-devpill"
+                                                indicatorClass="watts-devpill--ind">
+                                    <span class="watts-devpill--ind off">
+                                        <span class="watts-devpill--dot"></span>
+                                        <span class="watts-devpill--txt"></span>
+                                    </span>
+                                </connection-switch>
                             </div>
-                            <div class="device-card--body">
-                                <div class="device-card--body--row">
-                                    <connection-switch for="ble:smo2"
-                                                    class="connection-icon-switch"
-                                                    indicatorClass="connection-icon-switch--indicator">
+                            <div class="watts-dev--chips">
+                                <source-switch class="source-switch watts-chip"
+                                            for="smo2"
+                                            use="ble:smo2">
+                                    <span class="watts-chip--label">SmO₂</span>
+                                    <smo2-value class="data-view watts-chip--value">--</smo2-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                                <source-switch class="source-switch watts-chip"
+                                               for="thb"
+                                               use="ble:smo2">
+                                    <span class="watts-chip--label">THb</span>
+                                    <thb-value class="data-view watts-chip--value">--</thb-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                            </div>
+                        </div> <!-- end moxy muscle oxygen monitor -->
 
-                                        <svg class="connection-icon-switch--icon icon">
-                                            <use href="#icon--bluetooth"></use>
-                                        </svg>
-                                        <div class="connection-icon-switch--indicator off"></div>
-                                    </connection-switch>
-                                    <div class="device-card--tile">
-                                        <h3 class="device-card--tile--header">Name</h3>
-                                        <data-view class="data-view device-card--tile--value"
-                                                prop="ble:smo2:name">--</data-view>
-                                    </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                    for="smo2"
-                                                    use="ble:smo2">
-                                            <h3 class="device-card--tile--header">SmO2</h3>
-                                            <smo2-value class="data-view device-card--tile--value">--</smo2-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                       for="thb"
-                                                       use="ble:smo2">
-                                            <h3 class="device-card--tile--header">THb</h3>
-                                            <thb-value class="data-view device-card--tile--value">--</thb-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
+                        <!-- core temp sensor -->
+                        <div class="watts-dev">
+                            <div class="watts-dev--head">
+                                <div class="watts-dev--icon">
+                                    <svg><use href="#icon--bluetooth"></use></svg>
                                 </div>
-                            </div>
-                        </div>
-                    </div> <!-- end moxy-monitor settings -->
-
-                    <!-- core-temp settings -->
-                    <div class="device-card">
-                        <div class="device-card--cont">
-                            <div class="device-card--header">
-                                <div></div>
-                                <div class="device-card--header--label">CoreTemp</div>
+                                <div class="watts-dev--id">
+                                    <div class="watts-dev--type">Core Temp</div>
+                                    <data-view class="watts-dev--name"
+                                            prop="ble:coreTemp:name">No device paired</data-view>
+                                </div>
                                 <battery-level for="ble:coreTemp">
                                     <div class="battery--level"></div>
                                 </battery-level>
+                                <connection-switch for="ble:coreTemp"
+                                                class="watts-devpill"
+                                                indicatorClass="watts-devpill--ind">
+                                    <span class="watts-devpill--ind off">
+                                        <span class="watts-devpill--dot"></span>
+                                        <span class="watts-devpill--txt"></span>
+                                    </span>
+                                </connection-switch>
                             </div>
-                            <div class="device-card--body">
-                                <div class="device-card--body--row">
-                                    <connection-switch for="ble:coreTemp"
-                                                    class="connection-icon-switch"
-                                                    indicatorClass="connection-icon-switch--indicator">
+                            <div class="watts-dev--chips">
+                                <source-switch class="source-switch watts-chip"
+                                            for="coreBodyTemperature"
+                                            use="ble:coreTemp">
+                                    <span class="watts-chip--label">Core</span>
+                                    <core-body-temperature-value class="data-view watts-chip--value">--</core-body-temperature-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                                <source-switch class="source-switch watts-chip"
+                                               for="skinTemperature"
+                                               use="ble:coreTemp">
+                                    <span class="watts-chip--label">Skin</span>
+                                    <skin-temperature-value class="data-view watts-chip--value">--</skin-temperature-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                                <source-switch class="source-switch watts-chip hr"
+                                               for="heartRate"
+                                               use="ble:coreTemp">
+                                    <span class="watts-chip--label">Heart Rate</span>
+                                    <heart-rate-value class="data-view watts-chip--value">--</heart-rate-value>
+                                    <span class="watts-chip--off">off</span>
+                                </source-switch>
+                            </div>
+                        </div> <!-- end core temp sensor -->
 
-                                        <svg class="connection-icon-switch--icon icon">
-                                            <use href="#icon--bluetooth"></use>
-                                        </svg>
-                                        <div class="connection-icon-switch--indicator off"></div>
-                                    </connection-switch>
-                                    <div class="device-card--tile">
-                                        <h3 class="device-card--tile--header">Name</h3>
-                                        <data-view class="data-view device-card--tile--value"
-                                                prop="ble:coreTemp:name">--</data-view>
-                                    </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                    for="coreBodyTemperature"
-                                                    use="ble:coreTemp">
-                                            <h3 class="device-card--tile--header">Core</h3>
-                                            <core-body-temperature-value class="data-view device-card--tile--value">--</core-body-temperature-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                       for="skinTemperature"
-                                                       use="ble:coreTemp">
-                                            <h3 class="device-card--tile--header">Skin</h3>
-                                            <skin-temperature-value class="data-view device-card--tile--value">--</skin-temperature-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
-                                    <div class="device-card--tile">
-                                    </div>
-                                    <div class="device-card--tile">
-                                        <source-switch class="source-switch"
-                                                       for="heartRate"
-                                                       use="ble:coreTemp">
-                                            <h3 class="device-card--tile--header">Heart Rate</h3>
-                                            <heart-rate-value class="data-view device-card--tile--value">--</heart-rate-value>
-                                            <svg class="toggle--button">
-                                                <use class="on" href="#icon--toggle--on"></use>
-                                                <use class="off" href="#icon--toggle--off"></use>
-                                            </svg>
-                                        </source-switch>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div> <!-- end moxy-monitor settings -->
-
-                    <!-- Options -->
-                    <div class="list--sub-section">
-                        <div class="list--row--outer">
-                            <div class="list--row--inner list--heading--cont">
-                                <h2 class="list--sub-heading">Options</h2>
-                            </div>
-                        </div>
-                        <div class="list--row--outer">
-                            <div class="list--row--inner option">
-                                <div class="option--name">Sound</div>
-                                <sound-control class="option--value sound--row">
-                                    <svg id="sound--mute"
-                                         class="sound--item control--btn--icon"
-                                         width="24px"
-                                         height="24px">
-                                        <use href="#icon--sound--mute"></use>
-                                    </svg>
-                                    <svg id="sound--down"
-                                         class="sound--item control--btn--icon"
-                                         width="24px"
-                                         height="24px">
-                                        <use href="#icon--sound--down"></use>
-                                    </svg>
-                                    <svg id="sound--up"
-                                         class="sound--item control--btn--icon"
-                                         width="24px"
-                                         height="24px">
-                                        <use href="#icon--sound--up"></use>
-                                    </svg>
-                                    <div id="sound--volume" class="sound--volume sound--item">
-                                        100%
-                                    </div>
-                                </sound-control>
-                            </div>
-                        </div>
-
-                        <div class="list--row--outer">
-                            <div class="list--row--inner option">
-                                <div class="option--name">Simulation</div>
-                                <virtual-state-source class="option--value">power</virtual-state-source>
-                            </div>
-                        </div>
-
-                        <div class="list--row--outer">
-                            <div class="list--row--inner option">
-                                <div class="option--name">Auto Start</div>
-                                <auto-start class="option--value">
-                                    ON
-                                </auto-start>
-                            </div>
-                        </div>
-
-                        <div class="list--row--outer">
-                            <div class="list--row--inner option">
-                                <div class="option--name">Auto Pause</div>
-                                <auto-pause class="option--value">
-                                    OFF
-                                </auto-pause>
-                            </div>
-                        </div>
-
-                        <div class="list--row--outer">
-                            <div class="list--row--inner option">
-                                <div class="option--name">Theme</div>
-                                <theme-layout class="option--value">
-                                    DARK
-                                </theme-layout>
-                            </div>
-                        </div>
-
-                        <div class="list--row--outer">
-                            <div class="list--row--inner option">
-                                <div class="option--name">Start in Dock Mode</div>
-                                <dock-mode-default class="option--value">
-                                    OFF
-                                </dock-mode-default>
-                            </div>
-                        </div>
-                    </div> <!-- END Options -->
+                    </div> <!-- end watts-devices -->
 
                     <!-- about -->
-                    <div id="about">
-                        <h2 class="page--heading">About</h2>
+                    <div id="about" class="watts-set--card watts-about">
+                        <h2 class="watts-set--eyebrow">About</h2>
                         <div class="about--text">
-                            <p class="">This is an open-source project. For more information, please visit the <a class="a" href="https://github.com/dvmarinoff/Auuki">github</a> page. There you can get support or join the discussions.</p>
+                            <p>This is an open-source project. For more information, please visit the <a class="a" href="https://github.com/moates695/cycling_smart_trainer">github</a> page. There you can get support or join the discussions.</p>
                         </div>
                         <div class="about--version">
-                            <p class="">Latest version: 0.3.9</p>
-                        </div>
-                        <div class="about--version">
-                            <p class="">Old stable version still available here: <a class="a" href="https://stable.auuki.com">0.1.43</a></p>
+                            <p>Latest version: 0.3.9</p>
                         </div>
                         <div class="about--links">
-                            License <a class="a" href="https://www.gnu.org/licenses/agpl-3.0.en.html"> AGPL-3.0</a></p>
+                            License <a class="a" href="https://www.gnu.org/licenses/agpl-3.0.en.html">AGPL-3.0</a>
                         </div>
                         <div class="privacy-policy">
                             <a class="a" href="./privacy">Privacy</a>
                         </div>
                     </div> <!-- end about -->
                 </div> <!-- end settings--sub-tab -->
+                </div> <!-- end watts-set -->
             </div> <!-- end settings page -->
 
             </page-group>
@@ -1237,6 +1074,7 @@
                             <span class="watts-pill--label"><data-view prop="ble:heartRateMonitor:name">Heart Rate</data-view></span>
                         </connection-switch>
                     </div>
+                    <profile-avatar id="topnav-avatar" class="watts-avatar" title="Account">?</profile-avatar>
                 </div> <!-- end watts-topnav--inner -->
             </header> <!-- end watts-topnav -->
         </div> <!-- end wrapper -->

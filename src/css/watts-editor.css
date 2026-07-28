@@ -1,0 +1,409 @@
+/* ==========================================================================
+   WATTS overhaul — workout Editor (the <workout-designer> component).
+
+   Recreates the hi-fi design in design_handoff_watts_trainer (05-editor.png):
+   1120px content column, #15181f cards, sunken #12141a fields, uppercase
+   Barlow Semi Condensed section labels, Coggan zone-coloured blocks, accent
+   #c8f651 primary actions. The --watts-* tokens live in flux.css.
+   ========================================================================== */
+
+workout-designer .wd-cont {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 20px 24px 48px;
+    font-family: var(--watts-ssb);
+    color: var(--watts-text);
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- header row: title + Load…/Clear ------------------------------------- */
+
+.wd-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.wd-title {
+    margin: 0;
+    font: 700 22px/1 var(--watts-ssb);
+    color: var(--watts-text);
+}
+.wd-head-actions { display: flex; gap: 10px; }
+
+/* --- buttons -------------------------------------------------------------- */
+
+workout-designer .btn {
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: var(--watts-chip);
+    border: 1px solid var(--watts-border-2);
+    color: var(--watts-text-2);
+    font: 600 12px/1 var(--watts-ssb);
+    letter-spacing: .05em;
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+}
+workout-designer .btn:hover {
+    border-color: rgba(255,255,255,.22);
+    color: var(--watts-text);
+}
+workout-designer .btn:disabled { opacity: .35; cursor: default; }
+workout-designer .btn:disabled:hover {
+    border-color: var(--watts-border-2);
+    color: var(--watts-text-2);
+}
+workout-designer .btn--primary {
+    padding: 12px 22px;
+    border-radius: 11px;
+    background: var(--watts-accent);
+    border-color: var(--watts-accent);
+    color: #0e1015;
+    font: 700 13px/1 var(--watts-ssb);
+    letter-spacing: .05em;
+}
+workout-designer .btn--primary:hover {
+    background: var(--watts-accent-hover);
+    border-color: var(--watts-accent-hover);
+    color: #0e1015;
+}
+workout-designer .btn--danger {
+    background: rgba(255,84,112,.12);
+    border-color: rgba(255,84,112,.4);
+    color: var(--watts-hr);
+}
+workout-designer .btn--danger:hover {
+    border-color: var(--watts-hr);
+    color: #fff;
+}
+
+/* --- meta fields (Name / Category / Description) -------------------------- */
+
+.wd-meta {
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.wd-meta .wd-meta-desc-wrap { grid-column: 1 / -1; }
+.wd-meta label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    font: 600 11px/1 var(--watts-ssb);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--watts-text-faint);
+}
+.wd-meta input,
+.wd-meta select {
+    width: 100%;
+    background: var(--watts-sunken);
+    border: 1px solid var(--watts-border-2);
+    border-radius: 10px;
+    padding: 11px 14px;
+    font: 600 15px/1.2 var(--watts-ssb);
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--watts-text);
+}
+.wd-meta input:focus,
+.wd-meta select:focus {
+    outline: none;
+    border-color: rgba(200,246,81,.55);
+}
+.wd-meta select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 34px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23626b7a' stroke-width='1.6' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 13px center;
+    cursor: pointer;
+}
+
+/* --- cards ----------------------------------------------------------------- */
+
+.wd-card {
+    background: var(--watts-panel);
+    border: 1px solid var(--watts-border);
+    border-radius: 16px;
+}
+
+/* --- profile graph card ----------------------------------------------------- */
+
+.wd-chart-card {
+    padding: 12px 16px 10px;
+    margin-bottom: 16px;
+}
+.wd-tools {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.wd-tools .btn { padding: 7px 11px; }
+.wd-chart-wrap { overflow-x: auto; }
+.wd-svg { display: block; touch-action: none; }
+
+/* grid, axes, ticks */
+.wd-grid {
+    stroke: rgba(255,255,255,.07);
+    stroke-width: 1;
+    stroke-dasharray: 4 4;
+}
+.wd-tick { stroke: rgba(255,255,255,.04); stroke-width: 1; }
+.wd-axis-line { stroke: rgba(255,255,255,.10); stroke-width: 1; }
+.wd-axis {
+    fill: var(--watts-text-dim);
+    font: 600 10px var(--watts-ssb);
+    letter-spacing: .04em;
+}
+.wd-tick-label { fill: var(--watts-text-dim); }
+
+/* zone-coloured, draggable blocks */
+.wd-bar { cursor: pointer; opacity: .85; }
+.wd-bar:hover,
+.wd-bar.wd-selected { opacity: 1; }
+.wd-z1 { fill: var(--watts-z1); }
+.wd-z2 { fill: var(--watts-z2); }
+.wd-z3 { fill: var(--watts-z3); }
+.wd-z4 { fill: var(--watts-z4); }
+.wd-z5 { fill: var(--watts-z5); }
+.wd-z6 { fill: var(--watts-z6); }
+.wd-z7 { fill: var(--watts-z7); }
+
+/* "176W · 10:00" labels above blocks */
+.wd-bar-label {
+    fill: #fff;
+    font: 700 11px var(--watts-ssb);
+    paint-order: stroke;
+    stroke: rgba(14,16,21,.65);
+    stroke-width: 3px;
+    pointer-events: none;
+}
+
+/* selection affordances (drag handles keep their original hit areas) */
+.wd-selected-outline {
+    stroke: var(--watts-accent);
+    stroke-width: 2;
+    pointer-events: none;
+}
+.wd-edge { fill: rgba(255,255,255,.001); cursor: ew-resize; }
+.wd-edge-top {
+    stroke: rgba(255,255,255,.001);
+    stroke-width: 12;
+    cursor: ns-resize;
+    pointer-events: stroke;
+}
+.wd-handle {
+    fill: #fff;
+    stroke: var(--watts-accent);
+    stroke-width: 2;
+    cursor: ns-resize;
+}
+
+/* "3 BLOCKS · 20:00 · FTP 200 W" summary line */
+.wd-summary {
+    margin: 10px 0 4px;
+    text-align: center;
+    font: 600 12px/1 var(--watts-ssb);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--watts-text-faint);
+    min-height: 12px;
+}
+.wd-summary.wd-flash {
+    text-transform: none;
+    letter-spacing: .02em;
+    color: var(--watts-accent);
+}
+
+/* --- block table card -------------------------------------------------------- */
+
+.wd-list-card {
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 18px;
+}
+.wd-lhead,
+.wd-lrow {
+    display: grid;
+    grid-template-columns: 36px 1.1fr 1.3fr 1.3fr .9fr .9fr 118px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 18px;
+}
+.wd-lhead {
+    font: 600 11px/1 var(--watts-ssb);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--watts-text-dim);
+    border-bottom: 1px solid var(--watts-border);
+}
+.wd-lrow {
+    border-bottom: 1px solid rgba(255,255,255,.04);
+    font: 600 14px/1 var(--watts-ssb);
+    cursor: pointer;
+}
+.wd-lrow:hover { background: rgba(255,255,255,.02); }
+.wd-lrow.wd-lsel {
+    background: rgba(200,246,81,.05);
+    box-shadow: inset 2px 0 0 var(--watts-accent);
+}
+.wd-lidx { color: var(--watts-text-dim); }
+.wd-lpow { white-space: nowrap; }
+
+/* sunken chip inputs in table rows */
+.wd-li {
+    width: 5.2em;
+    background: var(--watts-chip);
+    border: 1px solid var(--watts-border-2);
+    border-radius: 7px;
+    padding: 6px 10px;
+    color: var(--watts-text);
+    font: 600 13px/1 var(--watts-ssb);
+    font-variant-numeric: tabular-nums;
+}
+.wd-li:focus { outline: none; border-color: rgba(200,246,81,.55); }
+.wd-li::placeholder { color: var(--watts-text-dim); }
+.wd-li::-webkit-outer-spin-button,
+.wd-li::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.wd-li[type=number] { -moz-appearance: textfield; appearance: textfield; }
+.wd-unit {
+    color: var(--watts-text-faint);
+    font: 600 11px/1 var(--watts-ssb);
+    margin-left: 6px;
+    white-space: nowrap;
+}
+
+/* row actions ↑ ↓ ⧉ ✕ */
+.wd-lactions { display: flex; justify-content: flex-end; gap: 2px; }
+.wd-lactions button {
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 7px;
+    color: var(--watts-text-dim);
+    font: 600 14px/1 var(--watts-ssb);
+    cursor: pointer;
+    transition: color .15s, background .15s;
+}
+.wd-lactions button:hover:not(:disabled) {
+    color: var(--watts-text);
+    background: rgba(255,255,255,.06);
+}
+.wd-lactions button[data-act="del"]:hover:not(:disabled) { color: var(--watts-hr); }
+.wd-lactions button:disabled { opacity: .25; cursor: default; }
+
+/* + ADD BLOCK row */
+.wd-list-add {
+    display: block;
+    width: 100%;
+    padding: 13px 18px;
+    background: transparent;
+    border: none;
+    color: var(--watts-accent);
+    font: 700 12px/1 var(--watts-ssb);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color .15s, background .15s;
+}
+.wd-list-add:hover {
+    background: rgba(200,246,81,.06);
+    color: var(--watts-accent-hover);
+}
+
+.wd-hint {
+    margin: 0;
+    padding: 16px 18px 4px;
+    font: 400 14px/1.5 var(--watts-body);
+    color: var(--watts-text-mut);
+}
+
+/* --- footer actions ------------------------------------------------------- */
+
+.wd-footer { display: flex; gap: 12px; }
+
+/* --- modals (load picker + unsaved-changes guard) --------------------------- */
+
+.wd-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(5,6,9,.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1em;
+}
+.wd-modal {
+    background: var(--watts-panel);
+    border: 1px solid var(--watts-border-2);
+    border-radius: 16px;
+    width: min(440px, 100%);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.wd-modal-head {
+    padding: 16px 18px;
+    font: 700 15px/1.3 var(--watts-ssb);
+    color: var(--watts-text);
+    border-bottom: 1px solid var(--watts-border);
+}
+.wd-modal-warn {
+    color: var(--watts-hr);
+    font: 600 12px/1.3 var(--watts-ssb);
+}
+.wd-modal-body {
+    padding: 14px 18px;
+    font: 400 14px/1.5 var(--watts-body);
+    color: var(--watts-text-2);
+}
+.wd-modal-list {
+    padding: 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.wd-pick {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1em;
+    text-align: left;
+    padding: 11px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--watts-border-2);
+    background: var(--watts-chip);
+    color: var(--watts-text);
+    font: 600 14px/1 var(--watts-ssb);
+    cursor: pointer;
+    transition: border-color .15s;
+}
+.wd-pick:hover { border-color: rgba(200,246,81,.5); }
+.wd-pick-dur {
+    color: var(--watts-text-faint);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.wd-modal-foot {
+    padding: 12px 16px;
+    border-top: 1px solid var(--watts-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* --- responsive -------------------------------------------------------------- */
+
+@media (max-width: 760px) {
+    .wd-meta { grid-template-columns: 1fr; }
+    .wd-list-card { overflow-x: auto; }
+    .wd-lhead, .wd-lrow { min-width: 640px; }
+}

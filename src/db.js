@@ -50,6 +50,7 @@ let db = {
 
     // Targets
     powerTarget: models.powerTarget.default,
+    workoutIntensity: models.workoutIntensity.default,
     resistanceTarget: models.resistanceTarget.default,
     slopeTarget: models.slopeTarget.default,
     cadenceTarget: models.cadenceTarget.default,
@@ -57,6 +58,7 @@ let db = {
     mode: models.mode.default,
     page: models.page.default,
     lock: false,
+    lockDefault: models.lockDefault.default,
 
     // Profile
     ftp: models.ftp.default,
@@ -95,6 +97,8 @@ let db = {
     stepDuration: 0,
     watchStatus: TimerStatus.stopped,
     workoutStatus: TimerStatus.stopped,
+    // Play pressed, waiting for the rider to start pedalling (see watch-timing.js).
+    watchArmed: false,
 
     // Course
     courseIndex: 0,
@@ -105,6 +109,10 @@ let db = {
 
     // Services
     services: {strava: false, intervals: false, trainingPeaks: false},
+
+    // Account
+    authState: '',
+    accountEmail: '',
 };
 
 
@@ -238,6 +246,13 @@ xf.reg('ui:lock-toggle', (_, db) => {
     db.lock = !db.lock;
 });
 
+// WATTS Settings: persisted "Lock controls by default" option. Seeds db.lock
+// on startup (see app:start) and is toggled from the Settings page.
+xf.reg('ui:lock-default-switch', (_, db) => {
+    db.lockDefault = !db.lockDefault;
+    models.lockDefault.backup(db.lockDefault);
+});
+
 
 // UI options
 xf.reg('ui:data-tile-switch-set', (index, db) => {
@@ -254,6 +269,30 @@ xf.reg('ui:power-target-inc', (_, db) => {
 });
 xf.reg(`ui:power-target-dec`, (_, db) => {
     db.powerTarget = models.powerTarget.dec(db.powerTarget);
+});
+// Workout intensity (%): scales the workout's power targets. On change,
+// re-derive the current step's target so the trainer reacts immediately
+// rather than waiting for the next step.
+function reapplyPowerTarget(db) {
+    const step  = db.workout?.intervals?.[db.intervalIndex]?.steps?.[db.stepIndex];
+    const power = step?.power;
+    if(exists(power) && equals(db.workoutStatus, 'started')) {
+        const absolute = models.ftp.toAbsolute(power, db.ftp);
+        xf.dispatch('ui:power-target-set',
+                    models.workoutIntensity.apply(db.workoutIntensity, absolute));
+    }
+}
+xf.reg('ui:workout-intensity-set', (intensity, db) => {
+    db.workoutIntensity = models.workoutIntensity.set(intensity);
+    reapplyPowerTarget(db);
+});
+xf.reg('ui:workout-intensity-inc', (_, db) => {
+    db.workoutIntensity = models.workoutIntensity.inc(db.workoutIntensity);
+    reapplyPowerTarget(db);
+});
+xf.reg('ui:workout-intensity-dec', (_, db) => {
+    db.workoutIntensity = models.workoutIntensity.dec(db.workoutIntensity);
+    reapplyPowerTarget(db);
 });
 xf.reg('ui:cadence-target-set', (cadenceTarget, db) => {
     db.cadenceTarget = models.cadenceTarget.set(cadenceTarget);
@@ -312,6 +351,11 @@ xf.reg('ui:volume-down', (_, db) => {
 });
 xf.reg(`ui:volume-up`, (_, db) => {
     db.volume = models.volume.inc(db.volume);
+    models.volume.backup(db.volume);
+});
+// WATTS Settings: the sound slider sets an exact volume rather than stepping.
+xf.reg('ui:volume-set', (volume, db) => {
+    db.volume = models.volume.set(volume);
     models.volume.backup(db.volume);
 });
 
@@ -424,21 +468,35 @@ xf.reg('services', (x, db) => {
     db.services = Object.assign(db.services, x);
 });
 
+// Mirror the auth flow state into the store so views can react to sign-in
+// (':password:profile' is the signed-in state, see models/auth.js).
+xf.reg('action:auth', (state, db) => {
+    db.authState = state;
+});
+
+// The API doesn't return the account identity on session restore, so the
+// email is captured at login and persisted locally.
+xf.reg('account:email', (email, db) => {
+    db.accountEmail = email ?? '';
+    window.localStorage.setItem('accountEmail', db.accountEmail);
+});
+
 
 //
 xf.reg('app:start', async function(_, db) {
-
-    db.dockMode = models.dockMode.set(models.dockMode.restore());
-    models.dockMode.apply(db.dockMode);
 
     db.ftp = models.ftp.set(models.ftp.restore());
     db.weight = models.weight.set(models.weight.restore());
     db.theme = models.theme.set(models.theme.restore());
     db.measurement = models.measurement.set(models.measurement.restore());
     db.volume = models.volume.set(models.volume.restore());
+    // seed the ride-controls lock from the persisted "lock by default" option
+    db.lockDefault = models.lockDefault.set(models.lockDefault.restore());
+    db.lock = db.lockDefault;
     db.dataTileSwitch = models.dataTileSwitch.set(models.dataTileSwitch.restore()),
 
     db.sources = models.sources.set(models.sources.restore());
+    db.accountEmail = window.localStorage.getItem('accountEmail') ?? '';
 
     // IndexedDB Schema Version 3
     await idb.start('store', 3, ['session', 'workouts', 'activity']);

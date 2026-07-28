@@ -25,6 +25,19 @@ function snapPower(frac) {
     return Math.max(MIN_POWER, Math.round(frac / POWER_SNAP) * POWER_SNAP);
 }
 
+// Coggan 7-zone boundaries as fractions of FTP (upper edge of each zone,
+// z7 is open-ended). Matches the WATTS design spec's colorByPct mapping.
+const ZONE_BOUNDS = [0.55, 0.75, 0.90, 1.05, 1.20, 1.50];
+
+// Map a power fraction of FTP to a Coggan zone index 1..7, used by the
+// designer to pick the bar colour (via the --watts-z1..z7 CSS tokens).
+function powerToZoneIndex(frac) {
+    for(let i = 0; i < ZONE_BOUNDS.length; i++) {
+        if(frac <= ZONE_BOUNDS[i]) return i + 1;
+    }
+    return 7;
+}
+
 function Segment(args = {}) {
     return {
         id: args.id ?? nextId(),
@@ -110,6 +123,7 @@ export {
     round2,
     snapDuration,
     snapPower,
+    powerToZoneIndex,
     Segment,
     segmentsFromIntervals,
     segmentToZwoStep,

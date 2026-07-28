@@ -178,6 +178,13 @@ class Sources extends Model {
         }
         return false;
     }
+    // Settings saved before a flag existed come back without it, and an
+    // undefined flag reads as "off" in the toggles. Merge what was stored over
+    // the current defaults so a newly added setting arrives at its default
+    // rather than reading as something they switched off.
+    restore() {
+        return Object.assign(this.defaultValue(), super.restore());
+    }
     defaultValue() {
         const sources = {
             // device data source map
@@ -193,8 +200,11 @@ class Sources extends Model {
 
             // settings
             virtualState: 'power',
-            autoPause:    true,
+            // Two independent rules (see watch-timing.js): the pedals begin the
+            // ride and pick it back up after a pause, and the clock stops when
+            // the pedals do.
             autoStart:    true,
+            autoPause:    true,
             theme:        'DARK',
 
             // data tile settings
@@ -270,6 +280,22 @@ class PowerTarget extends Target {
         this.min = existance(args.min, 0);
         this.max = existance(args.max, 4000);
         this.step = existance(args.step, 10);
+    }
+}
+
+// Workout intensity bias in percent: scales every workout power target
+// (100 = ride the workout as written). Adjusted live from the Home control
+// bar stepper.
+class WorkoutIntensity extends Target {
+    postInit(args = {}) {
+        this.min = existance(args.min, 25);
+        this.max = existance(args.max, 200);
+        this.step = existance(args.step, 1);
+    }
+    defaultValue() { return 100; }
+    // Multiplier applied to an absolute workout power target.
+    apply(value, powerTarget) {
+        return Math.round(powerTarget * (value / 100));
     }
 }
 
@@ -529,6 +555,24 @@ class Measurement extends Model {
     }
 }
 
+// Whether the Home ride controls start locked (the WATTS "Lock controls by
+// default" option). Persisted to localStorage and used to seed db.lock on
+// startup (see the app:start reducer in db.js).
+class LockDefault extends Model {
+    postInit(args = {}) {
+        const self = this;
+        const storageModel = {
+            key: self.prop,
+            fallback: self.defaultValue(),
+            parse: (x) => equals(x, true) || equals(x, 'true'),
+        };
+        self.storage = new args.storage(storageModel);
+        self.values = [true, false];
+    }
+    defaultValue() { return true; }
+    defaultIsValid(value) { return this.values.includes(value); }
+}
+
 class DataTileSwitch extends Model {
     postInit(args = {}) {
         const self = this;
@@ -579,6 +623,10 @@ class Activity extends Model {
             name,
             duration: db.elapsed ?? 0,
             status: {strava: 'none', intervals: 'none', trainingPeaks: 'none'},
+            // derived ride metrics + compact traces for the Completed tab
+            // (WATTS design). Older activities without these fields render
+            // with placeholders.
+            ...this.summarize(db),
         };
         const record = {
             id,
@@ -597,6 +645,88 @@ class Activity extends Model {
             idb.remove('activity', summary.id);
         }
         return activityList;
+    }
+    // Derived ride metrics for the Completed list: average power / heart
+    // rate, normalised power, TSS, plus compact power/HR/cadence traces and a
+    // snapshot of the planned intervals for the ride-analysis graph. Returns
+    // {} when nothing was recorded so the summary stays lean.
+    summarize(db) {
+        // rr-interval entries carry only {time}, so keep timestamped samples.
+        const records = (db.records ?? []).filter((r) => exists(r.timestamp));
+        if(empty(records)) return {};
+
+        const powers = records.map((r) => r.power ?? 0);
+        const heartRates = records.map((r) => r.heart_rate ?? 0);
+        const cadences = records.map((r) => r.cadence ?? 0);
+
+        const ftp = db.ftp ?? 200;
+        const avgPower = Math.round(avg(powers));
+        const hrSamples = heartRates.filter((hr) => hr > 0);
+        const avgHeartRate = empty(hrSamples) ?
+              undefined : Math.round(avg(hrSamples));
+
+        const np = this.normalisedPower(powers);
+        const intensity = ftp > 0 ? (np / ftp) : 0;
+        const durationSec = records.length; // 1 record per second
+        const tss = ftp > 0 ?
+              Math.round(((durationSec * np * intensity) / (ftp * 3600)) * 100) :
+              undefined;
+
+        // ~1 sample per bucket, capped so a stored summary stays small.
+        const resample = (values, n) => {
+            const len = values.length;
+            if(len <= n) return values.map((v) => Math.round(v));
+            const out = [];
+            for(let i = 0; i < n; i++) {
+                const start = Math.floor((i * len) / n);
+                const end = Math.max(start + 1, Math.floor(((i + 1) * len) / n));
+                let sum = 0;
+                for(let j = start; j < end; j++) sum += values[j];
+                out.push(Math.round(sum / (end - start)));
+            }
+            return out;
+        };
+        const points = 180;
+        const trace = {
+            p: resample(powers, points),
+            h: resample(heartRates, points),
+            c: resample(cadences, points),
+        };
+
+        // planned steps as {d: seconds, pct: %FTP} for the dimmed background
+        // bars of the ride analysis.
+        const plan = (db.workout?.intervals ?? []).flatMap((interval) => {
+            return (interval.steps ?? []).map((step) => {
+                const watts = models.ftp.toAbsolute(step.power, ftp) ?? 0;
+                return {
+                    d: step.duration ?? 0,
+                    pct: Math.round((watts / (ftp || 200)) * 100),
+                };
+            });
+        });
+
+        const summary = { avgPower, np, tss, ftp, trace, plan };
+        if(exists(avgHeartRate)) summary.avgHeartRate = avgHeartRate;
+        return summary;
+    }
+    // classic Coggan normalised power: 30 s rolling average, mean of the 4th
+    // powers, 4th root. Falls back to the plain average for rides < 30 s.
+    normalisedPower(powers) {
+        const window = 30;
+        if(empty(powers)) return 0;
+        if(powers.length < window) return Math.round(avg(powers));
+        let rollingSum = 0;
+        let quartSum = 0;
+        let count = 0;
+        for(let i = 0; i < powers.length; i++) {
+            rollingSum += powers[i];
+            if(i >= window) rollingSum -= powers[i - window];
+            if(i >= window - 1) {
+                quartSum += Math.pow(rollingSum / window, 4);
+                count += 1;
+            }
+        }
+        return Math.round(Math.pow(quartSum / count, 0.25));
     }
     remove(id) {
         idb.remove('activity', id);
@@ -1589,6 +1719,7 @@ const virtualState = new VirtualState();
 const speedState   = new SpeedState();
 
 const powerTarget = new PowerTarget({prop: 'powerTarget'});
+const workoutIntensity = new WorkoutIntensity({prop: 'workoutIntensity'});
 const resistanceTarget = new ResistanceTarget({prop: 'resistanceTarget'});
 const slopeTarget = new SlopeTarget({prop: 'slopeTarget'});
 const cadenceTarget = new CadenceTarget({prop: 'cadenceTarget'});
@@ -1601,6 +1732,7 @@ const theme = new Theme({prop: 'theme', storage: LocalStorageItem});
 const dockMode = new DockMode({prop: 'dockMode', storage: LocalStorageItem});
 const volume = new Volume({prop: 'volume', storage: LocalStorageItem});
 const measurement = new Measurement({prop: 'measurement', storage: LocalStorageItem});
+const lockDefault = new LockDefault({prop: 'lockDefault', storage: LocalStorageItem});
 const dataTileSwitch = new DataTileSwitch({prop: 'dataTileSwitch', storage: LocalStorageItem});
 
 const power1s = new PropInterval({prop: 'db:power', effect: 'power1s', interval: 1000});
@@ -1639,6 +1771,7 @@ let models = {
     cadenceAvg,
 
     powerTarget,
+    workoutIntensity,
     resistanceTarget,
     slopeTarget,
     cadenceTarget,
@@ -1651,6 +1784,7 @@ let models = {
     volume,
     theme,
     measurement,
+    lockDefault,
     dataTileSwitch,
 
     activity,
@@ -1660,6 +1794,7 @@ let models = {
     session,
 
     PropInterval,
+    Sources,
 
     api,
 };

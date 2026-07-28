@@ -1,6 +1,7 @@
 import { equals, existance, exists,
          empty, first, last, repeat,
          capitalize, toFixed } from '../functions.js';
+import { WorkoutCategory } from './categories.js';
 
 // TODO: replace with ParserCombinators.js implementation
 // - allow for wrong xml syntax
@@ -530,7 +531,7 @@ function Head(args = {}) {
         author:      'Unknown',
         name:        'Custom',
         description: 'Custom',
-        category:    'Custom',
+        category:    WorkoutCategory.custom,
         subcategory: '',
         sportType:   'bike',
         tags:        '',

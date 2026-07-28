@@ -27,6 +27,17 @@ npx jest -t "some describe or it name"          # single test by name
 There is no lint step configured. Tests use `babel-jest` (see `.babelrc` — the `test` env
 transforms ES modules to CommonJS) and `fake-indexeddb` for storage tests.
 
+### Riding a workout without hardware
+
+`src/sim.js` (fork addition) fakes a trainer and HR strap. Open the dev server with `?sim=1`
+(add `&ride=1` to start pedalling immediately, `&devices=controllable,heartRateMonitor,smo2,coreTemp`
+to choose which). It dispatches the same `power`/`cadence`/`speed`/`heartRate` and
+`ble:<deviceType>:connected` events `ble/reactive-connectable.js` does, so everything above the BLE
+seam — db, models, watch, workout stepping, graphs, FIT recording, uploads — behaves as with real
+hardware. `ble/devices.js` skips creating the real connectables while sim mode is on. Console API is
+`window.sim` (`ride()`, `coast()`, `power(n)`, `hr(n)`, `dropout(ms)`, `state()`); a red SIM badge
+sits bottom-right and toggles pedalling on click.
+
 ## Architecture
 
 ### The `xf` reactive core (understand this first)
