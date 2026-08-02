@@ -73,6 +73,10 @@ let db = {
     dataTileSwitch: models.dataTileSwitch.default,
     auth: ':login',
 
+    // Intervals.icu personal API key auth (replaces the api.auuki.com OAuth flow)
+    intervalsApiKey: models.intervalsApiKey.default,
+    intervalsAthleteId: models.intervalsAthleteId.default,
+
     // Workouts
     workouts: [],
     workout: models.workout.default,
@@ -258,6 +262,37 @@ xf.reg('ui:lock-default-switch', (_, db) => {
 xf.reg('ui:data-tile-switch-set', (index, db) => {
     db.dataTileSwitch = index;
     models.dataTileSwitch.backup(db.dataTileSwitch);
+});
+
+// Intervals.icu API key: stored, then verified against the API. A successful
+// verify caches the athlete id and refreshes the planned-workout week.
+xf.reg('ui:intervals-api-key-set', async (key, db) => {
+    const value = models.intervalsApiKey.set(models.intervalsApiKey.parse?.(key) ?? key);
+    db.intervalsApiKey = value;
+    models.intervalsApiKey.backup(value);
+
+    if(value === '') {
+        db.intervalsAthleteId = '';
+        models.intervalsAthleteId.backup('');
+        xf.dispatch('services', {intervals: false});
+        return;
+    }
+
+    const athleteId = await models.api.intervals.verifyKey(value);
+
+    if(athleteId === '') {
+        xf.dispatch('action:intervals', ':key:invalid');
+        xf.dispatch('services', {intervals: false});
+        return;
+    }
+
+    db.intervalsAthleteId = athleteId;
+    models.intervalsAthleteId.backup(athleteId);
+    xf.dispatch('action:intervals', ':key:valid');
+    xf.dispatch('services', {intervals: true});
+
+    models.planned.getAthlete('intervals');
+    models.planned.wod('intervals');
 });
 
 // Targets
@@ -497,6 +532,10 @@ xf.reg('app:start', async function(_, db) {
 
     db.sources = models.sources.set(models.sources.restore());
     db.accountEmail = window.localStorage.getItem('accountEmail') ?? '';
+
+    db.intervalsApiKey = models.intervalsApiKey.set(models.intervalsApiKey.restore());
+    db.intervalsAthleteId = models.intervalsAthleteId.set(models.intervalsAthleteId.restore());
+    xf.dispatch('services', {intervals: db.intervalsApiKey !== ''});
 
     // IndexedDB Schema Version 3
     await idb.start('store', 3, ['session', 'workouts', 'activity']);

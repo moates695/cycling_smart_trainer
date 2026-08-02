@@ -567,13 +567,43 @@
     text-decoration: underline;
 }
 
-/* ---------- Account tab ---------- */
+/* ---------- Connections tab (was Account) ---------- */
 
 #settings-page .watts-acct {
     display: grid;
     grid-template-columns: 1.1fr .9fr;
     gap: 14px;
     align-items: start;
+}
+
+/* Intervals.icu API key card */
+
+#settings-page .watts-conn-key {
+    margin: 0;
+    padding: 30px 32px;
+}
+
+#settings-page .watts-conn-key--actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 16px;
+}
+
+#settings-page .watts-conn-key--help {
+    margin: 14px 0 0;
+    font: 400 12px/1.6 var(--watts-body);
+    color: var(--watts-text-mut);
+}
+
+#settings-page .watts-conn-key--help strong {
+    color: var(--watts-text);
+    font-weight: 600;
+}
+
+/* The key field is the only input on this tab, so it can own the width */
+#settings-page .watts-conn-key .watts-field {
+    max-width: 400px;
 }
 
 /* Signed in: hide the sign-in card, centre the remaining column */

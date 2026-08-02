@@ -34,17 +34,16 @@ function API() {
 function Router(args = {}) {
 
     async function start() {
-        const status = await auth.status();
-
+        // auth.status() used to run here. It calls api.auuki.com, whose CORS
+        // allowlist is exactly one origin (https://auuki.com), so from this fork
+        // it always rejected and surfaced a misleading "No internet connection or
+        // the API service is currently offline" banner. Intervals.icu is now
+        // reached directly with a personal API key, so there is no account to
+        // check on startup.
         const params = getParams();
         if(hasParams(params)) {
             console.log(params);
             await onQueryParams(params);
-        } else {
-            // TODO: remove
-            // get list of planned events once per period
-            if(status.intervals) {
-            }
         }
         return;
     }
@@ -82,9 +81,8 @@ function Router(args = {}) {
             if(service === OAuthService.strava) {
                 await strava.paramsHandler({state, code, scope});
             }
-            if(service === OAuthService.intervals) {
-                await intervals.paramsHandler({state, code, scope});
-            }
+            // Intervals.icu no longer uses OAuth here — it authenticates with a
+            // personal API key entered in Settings.
             if(service === OAuthService.trainingPeaks) {
                 await trainingPeaks.paramsHandler({state, code, scope});
             }

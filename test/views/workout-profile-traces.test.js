@@ -28,9 +28,9 @@ function graph() {
     el.ftp = 200;
     el.powerMax = 300;
     el.dom = {
-        tracePower:   document.createElementNS(SVG_NS, 'polyline'),
-        traceHr:      document.createElementNS(SVG_NS, 'polyline'),
-        traceCadence: document.createElementNS(SVG_NS, 'polyline'),
+        tracePower:   document.createElementNS(SVG_NS, 'path'),
+        traceHr:      document.createElementNS(SVG_NS, 'path'),
+        traceCadence: document.createElementNS(SVG_NS, 'path'),
     };
     return el;
 }
@@ -62,10 +62,17 @@ function ride(el, seconds, {power, heartRate, cadence}) {
     if(cadence !== undefined)   el.onCadence(cadence);
 }
 
+// Traces are paths so they can break where a sample leaves the plot. Read one
+// back as its subpaths (each `M ... L ...` run is one unbroken piece of line).
+function segmentsOf(line) {
+    return (line.getAttribute('d') ?? '')
+        .split('M').filter((sub) => sub.trim().length > 0)
+        .map((sub) => sub.split('L')
+             .map((point) => point.trim().split(',').map(parseFloat)));
+}
+
 function pointsOf(line) {
-    return (line.getAttribute('points') ?? '')
-        .split(' ').filter((p) => p.length > 0)
-        .map((p) => p.split(',').map(parseFloat));
+    return segmentsOf(line).flat();
 }
 
 describe('profile traces', () => {
@@ -76,7 +83,7 @@ describe('profile traces', () => {
 
         expect(pointsOf(el.dom.traceHr)).toEqual([
             [0,  50],  // 100 bpm = half the axis
-            [50, 2],   // 200 bpm = the top (clamped just inside the edge)
+            [50, 0],   // 200 bpm = the top of the plot
         ]);
     });
 
@@ -100,6 +107,50 @@ describe('profile traces', () => {
             [0,  55],
             [50, 10],
         ]);
+    });
+
+    // The top of the plot is powerMax / 0.90 = 333 W here. A sprint over that
+    // used to be pinned to the ceiling, drawing a flat line along the maximum
+    // that read as a long effort held exactly at the axis limit.
+    test('power above the top of the scale is not drawn, breaking the line', () => {
+        const el = graph();
+        ride(el, 0,   {power: 150}); // y = 55
+        ride(el, 300, {power: 400}); // off the top of the plot
+        ride(el, 600, {power: 150});
+
+        const segments = segmentsOf(el.dom.tracePower);
+        expect(segments).toHaveLength(2);
+        // Each piece runs out to / back from the ceiling, at the point where
+        // the line actually crosses it — no sample sits above y = 0.
+        expect(segments[0][0]).toEqual([0, 55]);
+        expect(segments[0][1][1]).toBe(0);
+        expect(segments[0][1][0]).toBeCloseTo(36.667, 2);
+        expect(segments[1][0][1]).toBe(0);
+        expect(segments[1][0][0]).toBeCloseTo(63.333, 2);
+        expect(segments[1][1]).toEqual([100, 55]);
+    });
+
+    test('power right on the ceiling is still drawn, unbroken', () => {
+        const el = graph();
+        ride(el, 0,   {power: 150});
+        ride(el, 300, {power: 300 / 0.9}); // exactly the top of the plot
+
+        const segments = segmentsOf(el.dom.tracePower);
+        expect(segments).toHaveLength(1);
+        expect(segments[0][1][1]).toBeCloseTo(0, 2);
+    });
+
+    test('the outline breaks with the line it sits under', () => {
+        const el = rendered();
+        el.dom.tracePower     = el.querySelector('.graph--trace-pow');
+        el.dom.tracePowerHalo = el.querySelector('.graph--trace-halo');
+        ride(el, 0,   {power: 150});
+        ride(el, 300, {power: 400});
+        ride(el, 600, {power: 150});
+
+        expect(el.dom.tracePowerHalo.getAttribute('d'))
+            .toBe(el.dom.tracePower.getAttribute('d'));
+        expect(segmentsOf(el.dom.tracePowerHalo)).toHaveLength(2);
     });
 
     test('each metric records on its own event, so a dropout only gaps that trace', () => {
@@ -135,7 +186,7 @@ describe('profile traces', () => {
         expect(el.powerTrace).toEqual([]);
         expect(el.hrTrace).toEqual([]);
         expect(el.cadenceTrace).toEqual([]);
-        expect(el.dom.traceHr.getAttribute('points')).toBe('');
+        expect(el.dom.traceHr.getAttribute('d')).toBe('');
     });
 
     test('power is stroked with the zone gradient, pinned to the plot', () => {
@@ -159,7 +210,7 @@ describe('profile traces', () => {
         const line = el.querySelector('.graph--trace-pow');
 
         // Under, not over: the outline must be painted first.
-        const order = [...el.querySelectorAll('polyline')];
+        const order = [...el.querySelectorAll('path')];
         expect(order.indexOf(halo)).toBeLessThan(order.indexOf(line));
         // Its colour is CSS's business; the zone gradient stays on the line.
         expect(halo.getAttribute('stroke')).toBe(null);

@@ -4378,7 +4378,7 @@ and (min-width: 1900px) {
     overflow: visible;
     z-index: 2;
 }
-.graph--traces polyline { fill: none; }
+.graph--traces path { fill: none; }
 /* Power is stroked with a zone gradient built in workout-graph.js (url(#...)),
    so no stroke colour here — one set in CSS would override the paint server
    (a `stroke` in a stylesheet beats the element's presentation attribute). */

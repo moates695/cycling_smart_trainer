@@ -1342,7 +1342,10 @@ class NavigationStack extends HTMLElement {
         }
         if(action === 'settings:profile') {
             this.switch('profile', this.tabs.settings.children);
-            models.api.auth.loadTurnstile();
+            // Turnstile used to load here for the sign-in form. Auuki's sitekey is
+            // registered to auuki.com (Cloudflare allows localhost for any sitekey,
+            // which is why it only ever rendered locally), and the account it
+            // guarded is gone — see the Connections panel in index.html.
             return;
         }
 

@@ -1,6 +1,6 @@
 import './connection-switch.js';
 import './data-views.js';
-import './auth-forms.js';
+import './intervals-key.js';
 import './effect-views.js';
 import './workout-designer.js';
 import './tabs.js';

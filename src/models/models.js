@@ -590,6 +590,52 @@ class DataTileSwitch extends Model {
     }
 }
 
+// Personal intervals.icu API key (Settings -> Developer on intervals.icu).
+// Replaces the OAuth-over-api.auuki.com flow: this fork sends the key as HTTP
+// Basic auth directly to intervals.icu. An empty string means "not connected".
+class IntervalsApiKey extends Model {
+    postInit(args = {}) {
+        const self = this;
+        const storageModel = {
+            key: self.prop,
+            fallback: self.defaultValue(),
+        };
+        self.storage = new args.storage(storageModel);
+    }
+    defaultValue() { return ''; }
+    defaultIsValid(value) { return typeof value === 'string'; }
+    defaultParse(value) {
+        return (value ?? '').trim();
+    }
+    isSet(value) {
+        return this.defaultParse(value) !== '';
+    }
+    // Never render the key back in full.
+    mask(value) {
+        const key = this.defaultParse(value);
+        if(key === '') return '';
+        return `${'•'.repeat(Math.max(0, key.length - 4))}${key.slice(-4)}`;
+    }
+}
+
+// Numeric intervals.icu athlete id, resolved once from the API key and cached so
+// later calls can address /athlete/{id} without a lookup round trip.
+class IntervalsAthleteId extends Model {
+    postInit(args = {}) {
+        const self = this;
+        const storageModel = {
+            key: self.prop,
+            fallback: self.defaultValue(),
+        };
+        self.storage = new args.storage(storageModel);
+    }
+    defaultValue() { return ''; }
+    defaultIsValid(value) { return typeof value === 'string'; }
+    defaultParse(value) {
+        return (value ?? '').trim();
+    }
+}
+
 class Activity extends Model {
     // var activity = {
     //         id: UUID,
@@ -991,6 +1037,14 @@ class Planned {
         console.log(':planned :restore');
 
         this.data = this.storage.restore();
+
+        // Without an intervals.icu API key there is nothing to sync against, so
+        // keep whatever is cached rather than firing calls that must 401.
+        if(!intervalsApiKey.isSet(intervalsApiKey.restore())) {
+            console.log(`:planned :no-intervals-key :skipping :wod`);
+            xf.dispatch(`action:planned`, ':data');
+            return;
+        }
 
         if(yesterdayOrOlder(this.data.modified.intervals)) {
             console.log(`:planned :outdated :calling :wod 'intervals'`);
@@ -1734,6 +1788,8 @@ const volume = new Volume({prop: 'volume', storage: LocalStorageItem});
 const measurement = new Measurement({prop: 'measurement', storage: LocalStorageItem});
 const lockDefault = new LockDefault({prop: 'lockDefault', storage: LocalStorageItem});
 const dataTileSwitch = new DataTileSwitch({prop: 'dataTileSwitch', storage: LocalStorageItem});
+const intervalsApiKey = new IntervalsApiKey({prop: 'intervalsApiKey', storage: LocalStorageItem});
+const intervalsAthleteId = new IntervalsAthleteId({prop: 'intervalsAthleteId', storage: LocalStorageItem});
 
 const power1s = new PropInterval({prop: 'db:power', effect: 'power1s', interval: 1000});
 const power3s = new PropInterval({prop: 'db:power', effect: 'power3s', interval: 3000});
@@ -1786,6 +1842,8 @@ let models = {
     measurement,
     lockDefault,
     dataTileSwitch,
+    intervalsApiKey,
+    intervalsAthleteId,
 
     activity,
     workout,

@@ -345,270 +345,105 @@
                     <navigation-action
                         id="link--settings-profile"
                         class="watts-set--tab"
-                        action="settings:profile" topic=":nav">Account
+                        action="settings:profile" topic=":nav">Connections
                     </navigation-action>
                 </header>
                 <!-- profile--sub-tab (Account) -->
                 <div id="view--settings-profile" class="sub-tab">
-                    <div class="watts-acct">
-                        <!-- sign-in column -->
-                        <div class="auth watts-acct--signin watts-set--card watts-set--card-grad">
-                            <auth-forms>
-                                <div id="password--forms" class="active">
-                                    <form id="login--form" class="login--form active">
-                                        <h2 class="watts-set--eyebrow">Sign in to WATTS</h2>
-                                        <p class="watts-acct--sub">Sync your FTP, workouts and ride history across devices.</p>
-                                        <div class="watts-field">
-                                            <label class="watts-field--label" for="login--email--input">Email</label>
-                                            <input id="login--email--input"
-                                                class="input"
-                                                name="email"
-                                                type="email"
-                                                placeholder="you@example.com"
-                                                value=""
-                                                required
-                                            />
-                                        </div>
-                                        <div class="watts-field">
-                                            <div class="watts-field--row">
-                                                <label class="watts-field--label" for="login--password--input">Password</label>
-                                                <view-action action=":password:forgot" topic=":auth">
-                                                    <span class="watts-acct--link">Forgot?</span>
-                                                </view-action>
-                                            </div>
-                                            <input id="login--password--input"
-                                                class="input"
-                                                name="password"
-                                                type="Password"
-                                                pattern=".{8,64}"
-                                                title="8 characters minimum"
-                                                placeholder="••••••••"
-                                                value=""
-                                                required
-                                            />
-                                        </div>
-                                        <button id="login--submit"
-                                                class="watts-btn-accent"
-                                                type="submit">Sign In</button>
-                                        <div class="watts-acct--alt">New here?
-                                            <view-action action=":password:register" topic=":auth">
-                                                <span class="watts-acct--link">Create an account</span>
-                                            </view-action>
-                                        </div>
-                                    </form>
-                                    <form id="register--form" class="register--form">
-                                        <h2 class="watts-set--eyebrow">Create your WATTS account</h2>
-                                        <p class="watts-acct--sub">Your FTP, workouts and history — on every device.</p>
-                                        <div class="watts-field">
-                                            <label class="watts-field--label" for="register--email--input">Email</label>
-                                            <input id="register--email--input"
-                                                class="input"
-                                                name="email"
-                                                type="email"
-                                                placeholder="you@example.com"
-                                                value=""
-                                                required
-                                            />
-                                        </div>
-                                        <div class="watts-field">
-                                            <label class="watts-field--label" for="register--password--input">Password</label>
-                                            <input id="register--password--input"
-                                                class="input"
-                                                name="password"
-                                                type="password"
-                                                pattern=".{8,64}"
-                                                title="8 characters minimum"
-                                                placeholder="8 characters minimum"
-                                                value=""
-                                                required
-                                            />
-                                        </div>
-                                        <div class="watts-field">
-                                            <label class="watts-field--label" for="register--password-confirmation--input">Confirm password</label>
-                                            <input id="register--password-confirmation--input"
-                                                class="input"
-                                                name="password_confirmation"
-                                                pattern=".{8,64}"
-                                                title="8 characters minimum"
-                                                placeholder="Repeat password"
-                                                type="password"
-                                                value=""
-                                                required
-                                            />
-                                        </div>
-                                        <input class="input" name="username" type="text" value="" placeholder="Username" autocomplete="off" />
-                                        <button id="register--submit"
-                                                class="watts-btn-accent"
-                                                type="submit">Create Account</button>
-                                        <div class="watts-acct--alt">Already have an account?
-                                            <view-action action=":password:login" topic=":auth">
-                                                <span class="watts-acct--link">Sign in</span>
-                                            </view-action>
-                                        </div>
-                                    </form>
-                                    <form id="forgot--form" class="forgot--form">
-                                        <h2 class="watts-set--eyebrow">Reset password</h2>
-                                        <p class="watts-acct--sub">We'll email you a link to reset your password.</p>
-                                        <div class="watts-field">
-                                            <label class="watts-field--label" for="forgot--email--input">Email</label>
-                                            <input id="forgot--email--input"
-                                                class="input"
-                                                name="email"
-                                                type="email"
-                                                placeholder="you@example.com"
-                                                value=""
-                                                required
-                                            />
-                                        </div>
-                                        <button id="forgot--submit"
-                                                class="watts-btn-accent"
-                                                type="submit">Send Reset Link</button>
-                                        <div id="forgot--msg" class="watts-acct--msg"></div>
-                                        <div class="watts-acct--alt">
-                                            <view-action action=":password:login" topic=":auth">
-                                                <span class="watts-acct--link">Back to sign in</span>
-                                            </view-action>
-                                        </div>
-                                    </form>
-                                    <form id="reset--form" class="reset--form">
-                                        <h2 class="watts-set--eyebrow">Choose a new password</h2>
-                                        <div class="watts-field">
-                                            <label class="watts-field--label" for="reset--password--input">New password</label>
-                                            <input id="reset--password--input"
-                                                class="input"
-                                                name="password"
-                                                type="password"
-                                                pattern=".{8,64}"
-                                                title="8 characters minimum"
-                                                placeholder="8 characters minimum"
-                                                value=""
-                                                required
-                                            />
-                                        </div>
-                                        <div class="watts-field">
-                                            <label class="watts-field--label" for="reset--password-confirmation--input">Confirm password</label>
-                                            <input id="reset--password-confirmation--input"
-                                                class="input"
-                                                name="password_confirmation"
-                                                pattern=".{8,64}"
-                                                title="8 characters minimum"
-                                                placeholder="Repeat password"
-                                                type="password"
-                                                value=""
-                                                required
-                                            />
-                                        </div>
-                                        <button id="reset--submit"
-                                                class="watts-btn-accent"
-                                                type="submit">Reset Password</button>
-                                        <div class="watts-acct--alt">
-                                            <view-action action=":password:login" topic=":auth">
-                                                <span class="watts-acct--link">Back to sign in</span>
-                                            </view-action>
-                                        </div>
-                                    </form>
-                                    <!-- turnstile -->
-                                    <div
-                                        id="cf-turnstile-container"
-                                        class="cf-turnstile"
-                                    >
-                                    </div> <!-- END turnstile -->
-                                </div> <!-- END password--forms -->
-                                <div id="auth-error--section" class="error">
-                                </div>
-                            </auth-forms>
-                        </div><!-- END sign-in column -->
+                    <!--
+                        Connections (was the Account sub-tab).
 
-                        <!-- benefits + status column -->
+                        The upstream Auuki account lived behind api.auuki.com, whose
+                        CORS allowlist holds exactly one origin (https://auuki.com), so
+                        sign-in, Turnstile and the OAuth connect flows could never work
+                        from this fork. Intervals.icu is now reached directly from the
+                        browser with a personal API key instead.
+
+                        Strava and TrainingPeaks are not listed: their OAuth token
+                        exchange needs a client secret, so they cannot work without a
+                        backend of our own.
+                    -->
+                    <div class="watts-acct watts-conn-page">
+                        <div class="watts-acct--left">
+                            <intervals-key class="watts-set--card watts-set--card-grad watts-conn-key">
+                                <h2 class="watts-set--eyebrow">Intervals.icu</h2>
+                                <p class="watts-acct--sub">
+                                    Paste your personal API key to pull planned workouts,
+                                    FTP and weight, and to upload completed rides.
+                                </p>
+
+                                <div class="watts-field">
+                                    <label class="watts-field--label" for="intervals--key--input">API key</label>
+                                    <input id="intervals--key--input"
+                                           class="input"
+                                           name="intervals_api_key"
+                                           type="password"
+                                           autocomplete="off"
+                                           spellcheck="false"
+                                           placeholder="Paste key from intervals.icu"
+                                           value="" />
+                                </div>
+
+                                <div class="watts-conn-key--actions">
+                                    <button id="intervals--key--save"
+                                            class="watts-btn-accent"
+                                            type="button">Connect</button>
+                                    <button id="intervals--key--clear"
+                                            class="watts-btn-chip"
+                                            type="button">Disconnect</button>
+                                </div>
+
+                                <div id="intervals--key--msg" class="watts-acct--msg"></div>
+
+                                <p class="watts-conn-key--help">
+                                    Find it on intervals.icu under
+                                    <strong>Settings &rarr; Developer &rarr; API Key</strong>.
+                                    The key is stored only in this browser and is sent
+                                    only to intervals.icu.
+                                </p>
+                            </intervals-key>
+                        </div>
+
                         <div class="watts-acct--right">
                             <div class="watts-set--card watts-why">
-                                <h2 class="watts-set--eyebrow">Why sign in</h2>
+                                <h2 class="watts-set--eyebrow">What this enables</h2>
                                 <div class="watts-why--list">
                                     <div class="watts-why--item">
-                                        <span class="watts-why--icon">↻</span>
+                                        <span class="watts-why--icon">&#9776;</span>
                                         <div>
-                                            <div class="watts-why--title">Cloud sync</div>
-                                            <div class="watts-why--desc">Workouts and settings follow you to any device.</div>
+                                            <div class="watts-why--title">Planned workouts</div>
+                                            <div class="watts-why--desc">This week's calendar loads into the Workouts tab.</div>
                                         </div>
                                     </div>
                                     <div class="watts-why--item">
-                                        <span class="watts-why--icon">↥</span>
+                                        <span class="watts-why--icon">&#8617;</span>
                                         <div>
-                                            <div class="watts-why--title">Auto-upload activities</div>
-                                            <div class="watts-why--desc">Completed rides export to Strava &amp; intervals.icu.</div>
+                                            <div class="watts-why--title">FTP &amp; weight sync</div>
+                                            <div class="watts-why--desc">Rider profile follows your intervals.icu settings.</div>
                                         </div>
                                     </div>
                                     <div class="watts-why--item">
-                                        <span class="watts-why--icon">◷</span>
+                                        <span class="watts-why--icon">&#8613;</span>
                                         <div>
-                                            <div class="watts-why--title">Training history</div>
-                                            <div class="watts-why--desc">Track FTP progression and load over time.</div>
+                                            <div class="watts-why--title">Ride upload</div>
+                                            <div class="watts-why--desc">Completed activities post back to your calendar.</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <!-- guest status (hidden once #profile goes active) -->
-                            <div class="watts-set--card watts-guest-card">
-                                <div class="watts-guest--avatar">?</div>
-                                <div>
-                                    <div class="watts-guest--title">Not signed in</div>
-                                    <div class="watts-guest--desc">Riding as a guest — data stays on this device.</div>
+
+                            <div class="watts-set--card watts-connections">
+                                <h2 class="watts-set--eyebrow">Other services</h2>
+                                <div class="watts-conn--row garmin">
+                                    <img class="watts-conn--icon" alt="GC" src="images/connections/garmin-connect.png"/>
+                                    <h3 class="watts-conn--name">Garmin</h3>
+                                    <a class="watts-btn-chip"
+                                       href="https://connect.garmin.com/modern/import-data"
+                                       target="_blank">Import</a>
                                 </div>
                             </div>
-                            <!-- profile: auth-forms marks this .active when signed in -->
-                            <div id="profile" class="profile">
-                                <div class="watts-set--card watts-signedin-card">
-                                    <div class="watts-guest--avatar signedin">✓</div>
-                                    <div class="watts-signedin--body">
-                                        <div class="watts-guest--title">Signed in</div>
-                                        <div class="watts-guest--desc">Your rides and settings sync to your account.</div>
-                                    </div>
-                                    <button id="logout--button"
-                                            class="watts-btn-chip"
-                                            type="button">Logout</button>
-                                </div>
-                                <div class="watts-set--card watts-connections">
-                                    <h2 class="watts-set--eyebrow">Connections</h2>
-                                    <o-auth>
-                                        <div class="watts-conn--row intervals">
-                                            <svg class="watts-conn--icon">
-                                                <use href="#icon--intervals"></use>
-                                            </svg>
-                                            <h3 class="watts-conn--name">Intervals.icu</h3>
-                                            <view-action action=":intervals:switch"
-                                                         topic=":oauth">
-                                                <div
-                                                    id="intervals--connect--button"
-                                                    class="watts-btn-chip">
-                                                   Connect
-                                                </div>
-                                            </view-action>
-                                        </div>
-                                        <div class="watts-conn--row strava">
-                                            <img class="watts-conn--logo"
-                                                 alt="Powered by Strava"
-                                                 src="./images/connections/powered-by-strava-logo.svg" />
-                                            <view-action action=":strava:switch"
-                                                         topic=":oauth">
-                                                <div
-                                                    id="strava--connect--button"
-                                                    class="watts-btn-chip">
-                                                    Connect
-                                                </div>
-                                            </view-action>
-                                        </div>
-                                        <div class="watts-conn--row garmin">
-                                            <img class="watts-conn--icon" alt="GC" src="images/connections/garmin-connect.png"/>
-                                            <h3 class="watts-conn--name">Garmin</h3>
-                                            <a class="watts-btn-chip"
-                                               href="https://connect.garmin.com/modern/import-data"
-                                               target="_blank">Import</a>
-                                        </div>
-                                    </o-auth>
-                                </div> <!-- end connections -->
-                            </div> <!-- end profile -->
-                        </div> <!-- end watts-acct--right -->
-                    </div> <!-- end watts-acct -->
+                        </div>
+                    </div> <!-- end watts-conn-page -->
                 </div> <!-- end profile--sub-tab -->
 
                 <!-- settings--sub-tab (Trainer) -->

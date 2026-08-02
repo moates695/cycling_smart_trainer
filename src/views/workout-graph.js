@@ -643,20 +643,55 @@ class WorkoutGraph extends HTMLElement {
         this.setTrace(this.dom?.traceHr,      this.hrTrace,      total, HR_AXIS_MAX, 100);
         this.setTrace(this.dom?.traceCadence, this.cadenceTrace, total, CADENCE_AXIS_MAX, 100);
     }
-    // Write one trace's polyline. `fill` is how much of the plot height the
+    // Write one trace's path. `fill` is how much of the plot height the
     // axis ceiling occupies, matching however that trace's scale is drawn.
+    //
+    // A sample above the top of the plot is not drawn at all: the line runs out
+    // to the ceiling, disappears, and picks up again where it comes back into
+    // range. Clamping it to the top edge instead would draw a flat line along
+    // the maximum, which reads as a sustained effort held exactly at the axis
+    // limit rather than as an off-the-scale spike. That break is why these are
+    // <path> and not <polyline> — a polyline cannot lift the pen.
     setTrace(line, trace, total, vmax, fill) {
         if(!exists(line)) return;
         if(total <= 0 || vmax <= 0 || trace.length < 2) {
-            line.setAttribute('points', '');
+            line.setAttribute('d', '');
             return;
         }
-        const points = trace.map((s) => {
-            const x = clamp(0, 100, (s.t / total) * 100);
-            const y = 100 - clamp(0, 98, (s.v / vmax) * fill);
-            return `${x.toFixed(3)},${y.toFixed(2)}`;
-        }).join(' ');
-        line.setAttribute('points', points);
+        const xOf = (s) => clamp(0, 100, (s.t / total) * 100);
+        const yOf = (s) => 100 - (s.v / vmax) * fill;
+        const fmt = (x, y) => `${x.toFixed(3)},${y.toFixed(2)}`;
+        // Where a segment crosses the ceiling (y = 0), between an in-range
+        // sample and an out-of-range one. Written in-range first either way,
+        // so it serves both leaving the plot and coming back into it.
+        const crossing = (inRange, outOfRange) => {
+            const y0 = yOf(inRange);
+            const y1 = yOf(outOfRange);
+            const t  = equals(y0, y1) ? 0 : y0 / (y0 - y1);
+            return fmt(xOf(inRange) + (xOf(outOfRange) - xOf(inRange)) * t, 0);
+        };
+
+        let d = '';
+        let drawing = false;
+        trace.forEach((s, i) => {
+            const prev = trace[i-1];
+            const y    = yOf(s);
+
+            if(y < 0) {
+                if(drawing) d += ` L ${crossing(prev, s)}`;
+                drawing = false;
+                return;
+            }
+            if(!drawing) {
+                d += exists(prev)
+                    ? ` M ${crossing(s, prev)} L ${fmt(xOf(s), y)}`
+                    : ` M ${fmt(xOf(s), y)}`;
+                drawing = true;
+                return;
+            }
+            d += ` L ${fmt(xOf(s), y)}`;
+        });
+        line.setAttribute('d', d.trim());
     }
     onIntervalIndex(index) {
         const self = this;
@@ -823,8 +858,8 @@ class WorkoutGraph extends HTMLElement {
             // Drawn back-to-front: cadence, then heart rate, then power on top —
             // power is the line the rider is steering by, so it never gets
             // hidden underneath the other two where they cross.
-            const polyline = (name) =>
-                `<polyline class="graph--trace-${name}" fill="none" ` +
+            const trace = (name) =>
+                `<path class="graph--trace-${name}" fill="none" ` +
                 `vector-effect="non-scaling-stroke" stroke-linejoin="round"/>`;
             // The recorded-power line is stroked with the same vertical zone
             // gradient as the home screen's power history, so its colour reads
@@ -839,13 +874,13 @@ class WorkoutGraph extends HTMLElement {
                 `<defs><linearGradient id="${this.gradId}" gradientUnits="userSpaceOnUse" ` +
                 `x1="0" y1="0" x2="0" y2="100">${zoneGradientStops(this.tracePowerMaxPct())}` +
                 `</linearGradient></defs>` +
-                polyline('cad') + polyline('hr') +
+                trace('cad') + trace('hr') +
                 // The power line is drawn twice: a wider dark copy underneath
                 // gives it an outline, so a zone colour never disappears into a
                 // bar of the same colour (e.g. a red trace over a Z6 block).
                 // Same points, written by updateTrace along with the line itself.
-                polyline('halo') +
-                `<polyline class="graph--trace-pow" fill="none" stroke="url(#${this.gradId})" ` +
+                trace('halo') +
+                `<path class="graph--trace-pow" fill="none" stroke="url(#${this.gradId})" ` +
                 `vector-effect="non-scaling-stroke" stroke-linejoin="round"/>` +
                 `</svg>`;
             this.innerHTML = progress +
