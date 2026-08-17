@@ -7,7 +7,10 @@
 services:
   watts-api:
     build:
-      context: ../server
+      # Relative to this file, which deploy-api.sh installs at $REMOTE_DIR/
+      # docker-compose.yml with the source rsynced alongside it at
+      # $REMOTE_DIR/server. ../server would resolve to /root/server.
+      context: ./server
     image: watts-api:latest
     container_name: watts-api
     restart: unless-stopped
