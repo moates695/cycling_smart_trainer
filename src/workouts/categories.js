@@ -41,7 +41,9 @@ export const workoutCategoryColor = Object.freeze({
     'Tempo':                     '#22c55e',
     [WorkoutCategory.base]:      '#3d8bfd',
     'Endurance':                 '#3d8bfd',
-    [WorkoutCategory.recovery]:  '#3b4250',
+    // Recovery is Z1, whose zone colour (#3b4250) is a near-black slate — fine as
+    // a graph fill, unreadable as label text on the dark UI. White instead.
+    [WorkoutCategory.recovery]:  '#ffffff',
 });
 
 // Fallback accent for categories not in the map above.
