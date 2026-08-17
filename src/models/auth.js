@@ -3,7 +3,6 @@ import { DialogMsg } from './enums.js';
 import { uuid } from '../storage/uuid.js';
 import config from './config.js';
 import strava from './strava.js';
-import intervals from './intervals.js';
 import trainingPeaks from './training-peaks.js';
 
 function Auth(args = {}) {
@@ -293,7 +292,6 @@ function Auth(args = {}) {
 
                 config.setServices(body.result.services);
                 strava.update();
-                intervals.update();
                 trainingPeaks.update();
 
                 xf.dispatch('action:auth', ':password:profile');
@@ -308,7 +306,7 @@ function Auth(args = {}) {
 
                 xf.dispatch('action:status', ':logout');
                 xf.dispatch('action:auth', ':password:login');
-                return {strava: false, intervals: false, trainingPeaks: false};
+                return {strava: false, trainingPeaks: false};
             }
             if(status === 500 || status === 405) {
                 console.log(`:api :no-api`);
@@ -321,10 +319,10 @@ function Auth(args = {}) {
                 }
 
                 xf.dispatch('action:auth', ':no-api');
-                return {strava: false, intervals: false, trainingPeaks: false};
+                return {strava: false, trainingPeaks: false};
             }
 
-            return {strava: false, intervals: false, trainingPeaks: false};
+            return {strava: false, trainingPeaks: false};
         } catch(error) {
             console.log(`:api :no-api`);
             console.log(error);
@@ -334,7 +332,7 @@ function Auth(args = {}) {
             }
 
             xf.dispatch('action:auth', ':no-api');
-            return {strava: false, intervals: false, trainingPeaks: false};
+            return {strava: false, trainingPeaks: false};
         }
     }
 

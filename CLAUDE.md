@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A fork of **Auuki** (github.com/dvmarinoff/flux) — a browser-based PWA for running structured
 cycling workouts on smart trainers. It talks to hardware directly via Web Bluetooth / Web Serial
 (FTMS, Tacx FE-C over BLE, CPS power meters, HR monitors, Moxy), runs ERG / resistance / slope
-modes, records `.FIT` activities, and syncs with Intervals.icu and Strava. Everything runs
-client-side; there is no backend in this repo.
+modes and records `.FIT` activities. The PWA is client-side; `server/` in this repo is the WATTS
+accounts and sync backend it talks to.
 
 This fork adds a **graphical `<workout-designer>` sub-tab** (`src/views/workout-designer.js` +
 `src/workouts/designer-model.js`) on top of upstream. See `memory/` notes for fork context.
@@ -23,6 +23,19 @@ npm test               # Jest (all tests)
 npx jest test/workouts/designer-model.test.js   # single test file
 npx jest -t "some describe or it name"          # single test by name
 ```
+
+Backend (see `server/README.md`):
+
+```bash
+cd server                # needs the machine's own Postgres, not a container:
+                         # watts_dev on host.docker.internal:5432 (see server/README.md)
+uv sync && uv run alembic upgrade head
+uv run uvicorn app.main:app --reload --port 8010   # .proxyrc forwards /api here
+uv run pytest
+```
+
+Note: the Jest suite has ~52 failures that predate this work (mostly `test/storage`). Diff the
+pass/fail set against a clean tree before blaming a change for them.
 
 There is no lint step configured. Tests use `babel-jest` (see `.babelrc` — the `test` env
 transforms ES modules to CommonJS) and `fake-indexeddb` for storage tests.
@@ -74,9 +87,14 @@ proxy emits `db:...` → subscribed Web Components re-render.**
 - **`src/models/models.js`** holds a *model* per store field. A model typically exposes `.default`
   (initial value), `.prop` (its event name), `.setState(...)` (derivation logic, e.g. lap/avg
   accumulation), and `.parse(...)`. `db.js` delegates to these rather than inlining logic.
-  Other `models/` files: `api.js`, `intervals.js`, `strava.js`, `training-peaks.js` (integrations),
-  `auth.js`, `config.js`. The `wod` (workout-of-day / weekly planned workouts) logic lives in
-  `models.js` and pulls from the Intervals.icu API.
+  Other `models/` files: `api.js`, `strava.js`, `training-peaks.js` (integrations),
+  `auth.js`, `config.js`.
+
+  The intervals.icu integration was removed along with the `Planned`/`wod` model it fed
+  (workout-of-day, weekly planned workouts, FTP/weight sync, ride upload). The WATTS account in
+  `src/sync/` replaced it as the account mechanism; nothing pulls a training calendar now. Note
+  that `intervals` still appears throughout the codebase in its unrelated sense — the steps of a
+  workout (`workout.intervals`, `watch.js`, `zwo.js`) — so grep accordingly.
 
 ### Views are native Web Components
 
@@ -109,6 +127,62 @@ pushed into the store via `xf.dispatch`. `src/ant/` is the (experimental) ANT+ e
 - **`src/views/workout-designer.js`** is the Web Component UI that uses `designer-model.js` and
   dispatches `ui:workout:create` with the generated ZWO string; the reducer in `db.js` parses it and
   adds it to the workout list.
+
+### Accounts and sync (`server/` + `src/sync/`)
+
+`server/` is a FastAPI + Postgres backend for email/password accounts and background sync of custom
+workouts, activity summaries, FIT files and the rider profile (FTP and weight). It is a separate
+deployable from the PWA — see `server/README.md` for how to run it, and `deploy/deploy-api.sh` for
+releases.
+
+The governing rule on the client: **IndexedDB stays the source of truth for the running app.** The
+server is a replica that converges in the background, and no UI path blocks on a network call — the
+app works signed out, offline, and mid-interval on bad wifi.
+
+- **`src/sync/sync-model.js`** is *pure* — serialisation, last-write-wins merge, tombstone
+  precedence, queue batching, backoff. DOM-free, no heavy imports, same convention as
+  `designer-model.js`. Covered by `test/sync/sync-model.test.js`.
+- **`src/sync/sync-api.js`** is transport only. Same-origin `/api`, session cookie, no merge logic.
+- **`src/sync/sync.js`** is the orchestrator wiring those to idb and `xf`. Covered by
+  `test/sync/sync.test.js` against fake-indexeddb and a stub server.
+- **`src/views/watts-account.js`** is the sign-in UI, in the Account sub-tab.
+
+Every local mutation drains immediately (`schedule(0)`), rather than waiting for the 60 s tick:
+workout create / upload / edit / delete, a completed ride, a deleted ride, and an FTP or weight
+edit. The reducers in `db.js` are what call sync — a new mutation path that skips them will write
+to idb and never leave the device.
+
+Things to keep in mind when touching this:
+
+- **Deletes must write tombstones, never bare `idb.remove`.** A hard delete is silently undone by
+  the next pull. `Activity.remove` and `sync.workoutRemoved` do this; anything new must too.
+- **The sync cursor only advances on a pull.** A push response's cursor covers only the rows just
+  sent and can sit above rows another device uploaded earlier.
+- **The rider profile lives in `localStorage`, not idb** — that is where `models.ftp` / `models.weight`
+  already keep it, and `app:start` restores it synchronously. `sync:settings` under the key
+  `sync:settings` is the sync envelope around those values; the plain `ftp` / `weight` keys are
+  untouched, so a signed-out app reads its settings exactly as before.
+- **Never route a pulled profile back through `ui:ftp-set`.** That reducer stamps the value as a
+  fresh local edit, which would push it straight back and ping-pong between devices. The
+  `sync:settings` reducer exists for the incoming direction.
+- **Server-side validation of the profile must never be stricter than the client's.** A 4xx is not
+  retried (`shouldRetry`), so a value the UI accepts but the API rejects wedges that device's whole
+  push queue, workouts included. `schemas.RiderSettings` mirrors the client bounds and drops unknown
+  keys for the same reason.
+
+`src/views/watts-account.js` holds five states in one card — sign in, create account, forgot
+password, enter the emailed code, signed in — and shows exactly one. Each is its own `<form>` so
+password managers see a login form, a registration form and a change-password form rather than one
+form that changes meaning.
+
+Password reset is a six digit code typed into the app, not a link followed from the inbox: a link
+opens whatever browser handles mail (on iOS always Safari, never the installed PWA), so the session
+it produces would land in the wrong browser. `POST /api/auth/password/reset` always answers 204 —
+never make it reveal whether an address is registered — and `/reset/confirm` returns the user and
+sets the cookie, so the client treats it exactly like a login (`sync.resetPassword` → `adopt` →
+`firstSync`). Server-side invariants live in `server/README.md`; the ones easy to break from the
+client are that the code is bound to the user id and that a wrong guess costs an attempt, so
+retrying blindly burns the code.
 
 ### PWA / service worker
 

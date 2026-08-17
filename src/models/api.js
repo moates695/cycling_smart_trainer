@@ -3,7 +3,6 @@ import { OAuthService, DialogMsg, stateParam, } from './enums.js';
 import { uuid } from '../storage/uuid.js';
 import config from './config.js';
 import strava from './strava.js';
-import intervals from './intervals.js';
 import trainingPeaks from './training-peaks.js';
 import auth from './auth.js';
 
@@ -23,7 +22,6 @@ function API() {
     return Object.freeze({
         auth,
         strava,
-        intervals,
         trainingPeaks,
         start,
         stop,
@@ -37,9 +35,9 @@ function Router(args = {}) {
         // auth.status() used to run here. It calls api.auuki.com, whose CORS
         // allowlist is exactly one origin (https://auuki.com), so from this fork
         // it always rejected and surfaced a misleading "No internet connection or
-        // the API service is currently offline" banner. Intervals.icu is now
-        // reached directly with a personal API key, so there is no account to
-        // check on startup.
+        // the API service is currently offline" banner. The WATTS account
+        // (src/sync/) restores its own session on start, so there is nothing to
+        // check here.
         const params = getParams();
         if(hasParams(params)) {
             console.log(params);
@@ -81,8 +79,6 @@ function Router(args = {}) {
             if(service === OAuthService.strava) {
                 await strava.paramsHandler({state, code, scope});
             }
-            // Intervals.icu no longer uses OAuth here — it authenticates with a
-            // personal API key entered in Settings.
             if(service === OAuthService.trainingPeaks) {
                 await trainingPeaks.paramsHandler({state, code, scope});
             }

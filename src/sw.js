@@ -1,4 +1,4 @@
-const cacheName = 'Flux-v009';
+const cacheName = 'Flux-v010';
 const resources = [
     './',
     'index.html',
@@ -109,10 +109,13 @@ const resources = [
     'models/auth.js',
     'models/config.js',
     'models/enums.js',
-    'models/intervals.js',
     'models/models.js',
     'models/strava.js',
     'models/training-peaks.js',
+
+    'sync/sync.js',
+    'sync/sync-api.js',
+    'sync/sync-model.js',
 
     'storage/idb.js',
     'storage/local-storage.js',
@@ -132,6 +135,7 @@ const resources = [
     'views/tabs.js',
     'views/views.js',
     'views/watch.js',
+    'views/watts-account.js',
     'views/workout-graph.js',
     'views/workout-list.js',
 

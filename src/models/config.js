@@ -1,7 +1,6 @@
 
 class Config {
     #defaultStravaClientId = 0;
-    #defaultIntervalsClientId = 0;
     #defaultTrainingPeaksClientId = 0;
 
     constructor() {
@@ -14,18 +13,17 @@ class Config {
             // deployed — is blocked by the browser. Kept only so the Strava and
             // TrainingPeaks models still import cleanly; nothing here can succeed.
             API_URI: "https://api.auuki.com",
-            // Intervals.icu reflects arbitrary origins in its CORS headers and
-            // accepts HTTP Basic auth with a personal API key, so this fork talks
-            // to it straight from the browser and needs no backend of its own.
-            INTERVALS_API_URI: "https://intervals.icu/api/v1",
+            // The WATTS accounts and sync backend. Same origin in both
+            // environments — nginx proxies /api/ in production, and Parcel's
+            // .proxyrc does the same in development — so the session cookie is
+            // first party and no CORS preflight is involved.
+            WATTS_API_URI: "/api",
             STRAVA_CLIENT_ID: this.defaultStravaClientId,
-            INTERVALS_CLIENT_ID: this.defaultIntervalsClientId,
             TRAINING_PEAKS_CLIENT_ID: this.defaultTrainingPeaksClientId,
         };
     }
     setServices(args = {}) {
         this.env.STRAVA_CLIENT_ID = args.strava ?? this.defaultStravaClientId;
-        this.env.INTERVALS_CLIENT_ID = args.intervals ?? this.defaultIntervalsClientId;
         this.env.TRAINING_PEAKS_CLIENT_ID = args.trainingPeaks ?? this.defaultTrainingPeaksClientId;
     }
     get() {

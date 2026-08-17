@@ -1,0 +1,52 @@
+# The WATTS API and its database, as a fragment to merge into the backend-prod
+# stack at /root/gym_junkie_server/docker-compose.yml.
+#
+# Deliberately no `ports:` on watts-api — api-prod already owns host port 8000,
+# and nginx reaches this over the docker network. Postgres is bound to loopback
+# only, so pg_dump from the host works but nothing off the droplet can connect.
+services:
+  watts-api:
+    build:
+      context: ../server
+    image: watts-api:latest
+    container_name: watts-api
+    restart: unless-stopped
+    env_file:
+      - /root/gym_junkie_server/app/envs/watts.env
+    environment:
+      WATTS_ENV: production
+      WATTS_DATABASE_URL: postgresql+psycopg://watts:${WATTS_DB_PASSWORD}@watts-postgres:5432/watts
+      # The PWA is same origin behind nginx, so no CORS and no preflight.
+      WATTS_CORS_ORIGINS: ""
+    depends_on:
+      watts-postgres:
+        condition: service_healthy
+    networks:
+      - backend-prod_api-network
+
+  watts-postgres:
+    image: postgres:16-alpine
+    container_name: watts-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: watts
+      POSTGRES_PASSWORD: ${WATTS_DB_PASSWORD}
+      POSTGRES_DB: watts
+    volumes:
+      - watts_pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U watts -d watts"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend-prod_api-network
+
+volumes:
+  watts_pgdata:
+
+networks:
+  backend-prod_api-network:
+    external: true

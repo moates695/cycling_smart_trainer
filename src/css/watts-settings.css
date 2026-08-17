@@ -567,7 +567,7 @@
     text-decoration: underline;
 }
 
-/* ---------- Connections tab (was Account) ---------- */
+/* ---------- Account tab ---------- */
 
 #settings-page .watts-acct {
     display: grid;
@@ -576,9 +576,13 @@
     align-items: start;
 }
 
-/* Intervals.icu API key card */
+/* Account card */
 
+/* watts-account is a custom element, so it defaults to display:inline — without
+   this the card background/border paints as stray inline fragments behind the
+   fields instead of a panel. */
 #settings-page .watts-conn-key {
+    display: block;
     margin: 0;
     padding: 30px 32px;
 }
@@ -601,29 +605,101 @@
     font-weight: 600;
 }
 
-/* The key field is the only input on this tab, so it can own the width */
 #settings-page .watts-conn-key .watts-field {
     max-width: 400px;
 }
 
-/* Signed in: hide the sign-in card, centre the remaining column */
-#settings-page .watts-acct:has(#profile.active) {
-    grid-template-columns: 1fr;
-    max-width: 640px;
-    margin: 0 auto;
+/* Sign in | Sign up. A segmented control at the top of the card rather than a
+   link under the form, so the choice is visible before anything is typed. Same
+   shape as the units switch; sized to the form beneath it so the card reads as
+   one column. */
+#settings-page .watts-acct--seg {
+    display: flex;
+    max-width: 400px;
+    background: var(--watts-chip);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 11px;
+    padding: 3px;
+    gap: 2px;
 }
 
-#settings-page .watts-acct:has(#profile.active) .watts-acct--signin {
-    display: none;
+#settings-page .watts-acct--seg-btn {
+    flex: 1;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--watts-text-mut);
+    font: 600 12px/1 var(--watts-ssb);
+    letter-spacing: .04em;
+    cursor: pointer;
+    transition: color .15s, background .15s;
 }
 
-#settings-page .watts-acct--right:has(#profile.active) .watts-guest-card {
-    display: none;
+#settings-page .watts-acct--seg-btn:hover {
+    color: var(--watts-text);
 }
 
-#settings-page .auth.watts-acct--signin {
-    margin: 0;
-    padding: 30px 32px;
+#settings-page .watts-acct--seg-btn.active {
+    background: var(--watts-accent);
+    color: var(--watts-bg);
+    font-weight: 700;
+}
+
+#settings-page .watts-acct--seg-btn.active:hover {
+    background: var(--watts-accent-hover);
+    color: var(--watts-bg);
+}
+
+#settings-page .watts-acct--seg-btn:focus-visible {
+    outline: 2px solid var(--watts-accent);
+    outline-offset: 2px;
+}
+
+/* Forgot your password / remembered it. The switch is a button, not an anchor:
+   it changes which panel is shown, it does not navigate anywhere. */
+#settings-page .watts-acct--switch {
+    margin: 16px 0 0;
+    font: 400 13px/1.6 var(--watts-body);
+    color: var(--watts-text-mut);
+}
+
+/* Off screen but still in the accessibility tree and still a real form field,
+   which is the point: the reset form carries a read only email so password
+   managers file the new password under the existing account. display:none would
+   hide it from them too. */
+#settings-page .watts-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+#settings-page .watts-btn-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: 600 13px/1.6 var(--watts-body);
+    color: var(--watts-accent);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+#settings-page .watts-btn-link:hover {
+    color: var(--watts-text);
+}
+
+#settings-page .watts-btn-link:focus-visible {
+    outline: 2px solid var(--watts-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
 }
 
 #settings-page .watts-acct--right {
@@ -632,23 +708,23 @@
     gap: 14px;
 }
 
-/* Forms — only the .active one shows (auth-forms.js toggles the class) */
+/* Forms. Both sign in and create account are always laid out; watts-account.js
+   decides which one the rider sees by toggling [hidden] on the panel that wraps
+   it. Do not gate this on a class — the old auth-forms.js toggled .active here,
+   and when it went away the rule left both forms permanently display:none, so
+   the card rendered with no email or password field in it at all. */
 
 #settings-page .watts-acct form {
-    display: none;
+    display: flex;
     flex-direction: column;
     gap: 14px;
     max-width: 400px;
 }
 
-#settings-page .watts-acct form.active {
-    display: flex;
-}
-
 #settings-page .watts-acct--sub {
     font: 400 14px/1.5 var(--watts-body);
     color: var(--watts-text-mut);
-    margin: -4px 0 6px;
+    margin: 16px 0 18px;
     max-width: 340px;
 }
 
@@ -684,6 +760,44 @@
     color: var(--watts-text);
 }
 
+/* Password field + its show / hide button. The button sits inside the field's
+   right edge, so the input reserves room for it rather than running underneath. */
+#settings-page .watts-pw {
+    position: relative;
+    display: flex;
+}
+
+#settings-page .watts-pw .input {
+    padding-right: 68px;
+}
+
+#settings-page .watts-pw--toggle {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--watts-text-mut);
+    font: 600 11px/1 var(--watts-ssb);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color .15s, background .15s;
+}
+
+#settings-page .watts-pw--toggle:hover {
+    background: var(--watts-chip);
+    color: var(--watts-text);
+}
+
+#settings-page .watts-pw--toggle:focus-visible {
+    outline: 2px solid var(--watts-accent);
+    outline-offset: 1px;
+}
+
 #settings-page .watts-acct .input::placeholder {
     color: var(--watts-text-dim);
 }
@@ -714,27 +828,6 @@
     background: var(--watts-accent-hover);
 }
 
-#settings-page .watts-acct--link {
-    font: 600 13px/1 var(--watts-ssb);
-    color: var(--watts-accent);
-    cursor: pointer;
-}
-
-#settings-page .watts-field--row .watts-acct--link {
-    font-size: 11px;
-}
-
-#settings-page .watts-acct--alt {
-    display: flex;
-    gap: 6px;
-    justify-content: center;
-    align-items: baseline;
-    text-align: center;
-    font: 400 13px/1 var(--watts-body);
-    color: var(--watts-text-mut);
-    margin-top: 4px;
-}
-
 #settings-page .watts-acct--msg {
     font: 400 13px/1.4 var(--watts-body);
 }
@@ -742,21 +835,6 @@
 #settings-page .watts-acct--msg.success { color: var(--watts-connected); }
 #settings-page .watts-acct--msg.error   { color: var(--watts-hr); }
 #settings-page .watts-acct--msg.loading { color: var(--watts-text-mut); }
-
-#settings-page .watts-acct .cf-turnstile {
-    margin: 14px 0 0;
-}
-
-#settings-page .watts-acct #auth-error--section {
-    display: none;
-    margin: 14px 0 0;
-    font: 500 13px/1.4 var(--watts-body);
-    color: var(--watts-hr);
-}
-
-#settings-page .watts-acct #auth-error--section.active {
-    display: block;
-}
 
 /* Why sign in */
 
@@ -790,61 +868,13 @@
     margin-top: 3px;
 }
 
-/* Guest / signed-in status cards */
-
-#settings-page .watts-guest-card,
-#settings-page .watts-signedin-card {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 18px 24px;
-}
-
-#settings-page .watts-guest--avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: var(--watts-chip);
-    border: 1px solid rgba(255,255,255,.1);
-    display: grid;
-    place-items: center;
-    color: var(--watts-text-dim);
-    font-size: 18px;
-    flex: 0 0 auto;
-}
-
-#settings-page .watts-guest--avatar.signedin {
-    color: var(--watts-accent);
-    border-color: rgba(200,246,81,.4);
-}
-
-#settings-page .watts-guest--title {
-    font: 600 14px/1 var(--watts-ssb);
-    color: var(--watts-text-2);
-}
-
-#settings-page .watts-guest--desc {
-    font: 400 12px/1.4 var(--watts-body);
-    color: var(--watts-text-faint);
-    margin-top: 3px;
-}
-
-#settings-page .watts-signedin--body { flex: 1; }
-
-/* #profile is display:none until auth-forms marks it .active (signed in) */
-#settings-page #profile.active {
+/* Connections card. The rows are direct children of the card now that o-auth is
+   gone, so the card itself owns the gap under the eyebrow — 16px to match the
+   .watts-why--list rhythm in the card directly above it. */
+#settings-page .watts-connections {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-}
-
-/* Connections card */
-
-#settings-page .watts-connections o-auth {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 14px;
+    gap: 16px;
 }
 
 #settings-page .watts-conn--row {

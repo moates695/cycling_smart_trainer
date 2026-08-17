@@ -2,11 +2,13 @@ import { xf, exists, existance, empty, equals, mavg, avg, max,
          first, second, last, clamp, toFixed, isArray,
          isString, isObject } from '../functions.js';
 
-import { inRange, dateToDashString, getStartEndOfWeek, isToday, timeDiff, pad } from '../utils.js';
+import { inRange, dateToDashString, timeDiff, pad } from '../utils.js';
 
 import { LocalStorageItem } from '../storage/local-storage.js';
 import { idb } from '../storage/idb.js';
 import { uuid } from '../storage/uuid.js';
+import { stampLocal, markDeleted } from '../sync/sync-model.js';
+import { sync } from '../sync/sync.js';
 
 import API from './api.js';
 import { workouts as workoutsFile }  from '../workouts/workouts.js';
@@ -590,52 +592,6 @@ class DataTileSwitch extends Model {
     }
 }
 
-// Personal intervals.icu API key (Settings -> Developer on intervals.icu).
-// Replaces the OAuth-over-api.auuki.com flow: this fork sends the key as HTTP
-// Basic auth directly to intervals.icu. An empty string means "not connected".
-class IntervalsApiKey extends Model {
-    postInit(args = {}) {
-        const self = this;
-        const storageModel = {
-            key: self.prop,
-            fallback: self.defaultValue(),
-        };
-        self.storage = new args.storage(storageModel);
-    }
-    defaultValue() { return ''; }
-    defaultIsValid(value) { return typeof value === 'string'; }
-    defaultParse(value) {
-        return (value ?? '').trim();
-    }
-    isSet(value) {
-        return this.defaultParse(value) !== '';
-    }
-    // Never render the key back in full.
-    mask(value) {
-        const key = this.defaultParse(value);
-        if(key === '') return '';
-        return `${'•'.repeat(Math.max(0, key.length - 4))}${key.slice(-4)}`;
-    }
-}
-
-// Numeric intervals.icu athlete id, resolved once from the API key and cached so
-// later calls can address /athlete/{id} without a lookup round trip.
-class IntervalsAthleteId extends Model {
-    postInit(args = {}) {
-        const self = this;
-        const storageModel = {
-            key: self.prop,
-            fallback: self.defaultValue(),
-        };
-        self.storage = new args.storage(storageModel);
-    }
-    defaultValue() { return ''; }
-    defaultIsValid(value) { return typeof value === 'string'; }
-    defaultParse(value) {
-        return (value ?? '').trim();
-    }
-}
-
 class Activity extends Model {
     // var activity = {
     //         id: UUID,
@@ -646,7 +602,6 @@ class Activity extends Model {
     //             name: String,
     //             status: {
     //                 strava: String,
-    //                 intervals: String,
     //                 trainingPeaks: String,
     //             }
     //         },
@@ -655,7 +610,6 @@ class Activity extends Model {
     name = 'activity';
     postInit(args) {
         this.api = args.api;
-        this.capacity = 7;
     }
     defaultValue() { return []; }
     createFromCurrent(db) {
@@ -668,28 +622,30 @@ class Activity extends Model {
             timestamp: Date.now(),
             name,
             duration: db.elapsed ?? 0,
-            status: {strava: 'none', intervals: 'none', trainingPeaks: 'none'},
+            status: {strava: 'none', trainingPeaks: 'none'},
             // derived ride metrics + compact traces for the Completed tab
             // (WATTS design). Older activities without these fields render
             // with placeholders.
             ...this.summarize(db),
         };
-        const record = {
+        // Stamped for sync at creation, so the record is written to idb exactly
+        // once and the background queue never has to read back a half-written row.
+        const record = stampLocal({
             id,
             blob,
             summary,
-        };
+        });
 
         this.add(summary, db.activity);
         idb.put('activity', record);
         xf.dispatch('activity:add', summary);
+        return summary;
     }
+    // History is kept in full. There was previously a hard cap of 7 here that
+    // popped the oldest summary and deleted its record (FIT blob included) from
+    // idb — silent, unrecoverable data loss on the 8th ride.
     add(activity, activityList) {
         activityList.unshift(activity);
-        if(activityList.length > this.capacity) {
-            const summary = activityList.pop();
-            idb.remove('activity', summary.id);
-        }
         return activityList;
     }
     // Derived ride metrics for the Completed list: average power / heart
@@ -774,14 +730,43 @@ class Activity extends Model {
         }
         return Math.round(Math.pow(quartSum / count, 0.25));
     }
-    remove(id) {
-        idb.remove('activity', id);
+    // A tombstone, not a deletion. The row has to survive long enough to tell
+    // the server — and through it every other device — that this ride is gone;
+    // a bare delete would simply be undone by the next pull. sync.js sweeps the
+    // tombstone once the server has acknowledged it.
+    //
+    // The FIT blob goes immediately. It is the large part of the record and is
+    // never wanted again.
+    async remove(id) {
+        const record = await idb.get('activity', id);
+        if(!exists(record)) return;
+        const { blob, ...rest } = record;
+        await idb.put('activity', markDeleted(rest));
+    }
+    // The FIT blob for this ride, fetching it from the account if this device
+    // never held it — which is the normal case for a ride recorded on the phone
+    // and opened on the laptop. Returns undefined when there is nothing to get,
+    // so callers keep working signed out.
+    async blobFor(id) {
+        const record = await idb.get('activity', id);
+        if(exists(record?.blob)) return record.blob;
+        try {
+            return await sync.downloadFit(id);
+        } catch(error) {
+            console.warn(`:activity :fit :unavailable ${id}`, error?.message);
+            return undefined;
+        }
     }
     async upload(service, id) {
         let record = await idb.get('activity', id);
 
+        if(!exists(record?.blob)) {
+            const blob = await this.blobFor(id);
+            if(!exists(blob)) return;
+            record = await idb.get('activity', id);
+        }
+
         if(service === 'strava' ||
-           service === 'intervals' ||
            service === 'trainingPeaks') {
 
             const res = await this.api[service].uploadWorkout(record);
@@ -796,8 +781,13 @@ class Activity extends Model {
     async download(id) {
         const self = this;
         const record = await idb.get('activity', id);
+        const blob = await self.blobFor(id);
+        if(!exists(blob)) {
+            console.warn(`:activity :download 'no FIT file for ${id}'`);
+            return;
+        }
         fileHandler.download()(
-            record.blob,
+            blob,
             self.fileName(record.summary.timestamp),
             fileHandler.Type.OctetStream
         );
@@ -821,16 +811,19 @@ class Activity extends Model {
     async restore() {
         const records = await idb.getAll('activity') ?? [];
 
-        // migrate summary.status String to {strava: String, intervals: String}
+        // migrate summary.status String to {strava: String, trainingPeaks: String}
         records.forEach((record) => {
             if(typeof record.summary.status === 'string') {
                 console.log(`:activity :migrating `, record.id);
-                record.summary.status = {strava: 'none', intervals: 'none'};
+                record.summary.status = {strava: 'none', trainingPeaks: 'none'};
                 idb.put('activity', record);
             }
         });
 
         return records
+            // Tombstones stay in idb until the server has acknowledged the
+            // delete; they are bookkeeping, not history.
+            .filter((record) => !exists(record.deleted_at))
             .map((record) => record.summary)
             .sort((a, b) => b.timestamp - a.timestamp);
     }
@@ -874,17 +867,6 @@ class Workout extends Model {
             return courseJS;
         }
         return zwo.readToInterval(result);
-    }
-    fromIntervalsEvent(event) {
-        const workout = this.parse(atob(event.workout_file_base64));
-        workout.meta.planned = true;
-        workout.meta.startDateLocal = event.start_date_local;
-        workout.id = uuid();
-        workout.intervals_id = event.id;
-        return workout;
-    }
-    fromIntervalsResponse(response) {
-        return response.map(this.fromIntervalsEvent.bind(this));
     }
     async readFromFile(file) {
         const result = await fileHandler.read(file);
@@ -946,7 +928,9 @@ class Workouts extends Model {
     }
     async restore(db) {
         const self = this;
-        const workouts = await idb.getAll(`${self.name}`) ?? [];
+        const stored = await idb.getAll(`${self.name}`) ?? [];
+        // Tombstones stay in idb until the server has acknowledged the delete.
+        const workouts = stored.filter((w) => !exists(w.deleted_at));
 
         if(empty(workouts)) {
             return self.default;
@@ -989,114 +973,6 @@ class Workouts extends Model {
     }
 }
 
-function yesterdayOrOlder(timestamp) {
-    return new Date().getDate() - new Date(timestamp).getDate() > 0;
-}
-
-// TODO:
-// - standardize the methods
-class Planned {
-    name = 'planned';
-    constructor(args = {}) {
-        const self = this;
-        this.data = this.defaultValue();
-        this.workoutModel = args.workoutModel;
-        this.athlete = {};
-        this.storage = LocalStorageItem({
-            key: 'planned',
-            encode: JSON.stringify,
-            parse: JSON.parse,
-            fallback: this.defaultValue(),
-        });
-    }
-    defaultValue() {
-        return {workouts: [], modified: {}};
-    }
-    get(id) {
-        for(let workout of this.data.workouts) {
-            if(workout.id === id) {
-                return workout;
-            }
-        }
-        console.error(`tring to get a missing planned workout: ${id}`);
-        return first(this.data.workouts);
-    }
-    setWorkouts(workouts) {
-        this.data.workouts = workouts;
-    }
-    list() {
-        return this.data.workouts;
-    }
-    setModified(service = 'intervals') {
-        this.data.modified[service] = Date.now();
-    }
-    isEmpty() {
-        return this.data.workouts.length === 0;
-    }
-    restore() {
-        console.log(':planned :restore');
-
-        this.data = this.storage.restore();
-
-        // Without an intervals.icu API key there is nothing to sync against, so
-        // keep whatever is cached rather than firing calls that must 401.
-        if(!intervalsApiKey.isSet(intervalsApiKey.restore())) {
-            console.log(`:planned :no-intervals-key :skipping :wod`);
-            xf.dispatch(`action:planned`, ':data');
-            return;
-        }
-
-        if(yesterdayOrOlder(this.data.modified.intervals)) {
-            console.log(`:planned :outdated :calling :wod 'intervals'`);
-            this.getAthlete('intervals');
-            this.wod('intervals');
-            return;
-        }
-
-        console.log(`:planned :up-to-date`);
-        xf.dispatch(`action:planned`, ':data');
-    }
-    backup() {
-        this.storage.set(this.data);
-        xf.dispatch(`action:planned`, ':data');
-    }
-    // force refresh the wod data
-    async wod(service) {
-        const self = this;
-        if(service === 'intervals') {
-            const { startOfWeek, endOfWeek } = getStartEndOfWeek(new Date(), true);
-            const response = await api.intervals.wod(startOfWeek, endOfWeek);
-            const workouts = self.workoutModel.fromIntervalsResponse(response);
-
-            this.setWorkouts(workouts);
-            this.setModified(service);
-            this.backup();
-
-            if(!this.isEmpty()) {
-                for(let workout of this.data.workouts) {
-                    if(isToday(workout.meta.startDateLocal)) {
-                        const id = workout.id;
-                        xf.dispatch(`action:li:${id}`, ':select');
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    async getAthlete(service) {
-        const self = this;
-        if(service === 'intervals') {
-            const response = await api.intervals.getAthlete();
-            console.log(response);
-            if(response.weight > 0) {
-                xf.dispatch('ui:weight-set', response.weight);
-            }
-            if(response.ftp > 0) {
-                xf.dispatch('ui:ftp-set', response.ftp);
-            }
-        }
-    }
-}
 
 function Session(args = {}) {
     let name = 'session';
@@ -1788,8 +1664,6 @@ const volume = new Volume({prop: 'volume', storage: LocalStorageItem});
 const measurement = new Measurement({prop: 'measurement', storage: LocalStorageItem});
 const lockDefault = new LockDefault({prop: 'lockDefault', storage: LocalStorageItem});
 const dataTileSwitch = new DataTileSwitch({prop: 'dataTileSwitch', storage: LocalStorageItem});
-const intervalsApiKey = new IntervalsApiKey({prop: 'intervalsApiKey', storage: LocalStorageItem});
-const intervalsAthleteId = new IntervalsAthleteId({prop: 'intervalsAthleteId', storage: LocalStorageItem});
 
 const power1s = new PropInterval({prop: 'db:power', effect: 'power1s', interval: 1000});
 const power3s = new PropInterval({prop: 'db:power', effect: 'power3s', interval: 3000});
@@ -1798,7 +1672,6 @@ const powerInZone = new PowerInZone({ftpModel: ftp});
 const activity = new Activity({prop: 'activity', api: api});
 const workout = new Workout({prop: 'workout', api: api});
 const workouts = new Workouts({prop: 'workouts', workoutModel: workout});
-const planned = new Planned({prop: 'planned', workoutModel: workout, api: api});
 
 const session = Session();
 
@@ -1842,13 +1715,10 @@ let models = {
     measurement,
     lockDefault,
     dataTileSwitch,
-    intervalsApiKey,
-    intervalsAthleteId,
 
     activity,
     workout,
     workouts,
-    planned,
     session,
 
     PropInterval,

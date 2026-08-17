@@ -7,9 +7,20 @@ BASE=/root/gym_junkie_server
 TEMPLATE=$BASE/nginx/nginx.conf.template
 COMPOSE=$BASE/docker-compose.yml
 
-echo "== 1/5 Append watts vhost to nginx template =="
-if grep -q "watts.moates.com.au" "$TEMPLATE"; then
-    echo "   already present, skipping"
+echo "== 1/5 Sync watts vhost into nginx template =="
+# The vhost is delimited by markers so re-running replaces it rather than
+# skipping — the block changes (the /api/ proxy was added to it), and an
+# append-once step would leave the droplet on a stale copy forever.
+if grep -q '^# >>> watts vhost' "$TEMPLATE"; then
+    cp "$TEMPLATE" "$TEMPLATE.bak.$(date +%Y%m%d%H%M%S)"
+    sed -i '/^# >>> watts vhost/,/^# <<< watts vhost$/d' "$TEMPLATE"
+    cat /tmp/watts-vhost.conf >> "$TEMPLATE"
+    echo "   replaced (previous template backed up alongside it)"
+elif grep -q "watts.moates.com.au" "$TEMPLATE"; then
+    echo "   ERROR: an unmarked watts vhost is already in $TEMPLATE."
+    echo "          It predates the managed markers. Delete both of its server {}"
+    echo "          blocks by hand once, then re-run this script."
+    exit 1
 else
     cat /tmp/watts-vhost.conf >> "$TEMPLATE"
     echo "   appended"

@@ -340,7 +340,9 @@ class ActivityItem extends HTMLElement {
             return;
         }
         if(action === ':remove') {
-            models.activity.remove(this.id);
+            // Through the store rather than the model directly, so the delete
+            // also leaves the list and gets propagated to the account.
+            xf.dispatch('ui:activity:remove', this.id);
             this.remove();
             return;
         }

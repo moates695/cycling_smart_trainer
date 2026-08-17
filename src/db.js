@@ -4,6 +4,8 @@ import { Sound } from './sound.js';
 import { idb } from './storage/idb.js';
 import { ControlMode, } from './ble/enums.js';
 import { TimerStatus, } from './activity/enums.js';
+import { sync } from './sync/sync.js';
+import { SyncState } from './sync/sync-model.js';
 
 // import { trainerMock } from './simulation-scripts.js';
 
@@ -73,10 +75,6 @@ let db = {
     dataTileSwitch: models.dataTileSwitch.default,
     auth: ':login',
 
-    // Intervals.icu personal API key auth (replaces the api.auuki.com OAuth flow)
-    intervalsApiKey: models.intervalsApiKey.default,
-    intervalsAthleteId: models.intervalsAthleteId.default,
-
     // Workouts
     workouts: [],
     workout: models.workout.default,
@@ -112,11 +110,17 @@ let db = {
     antDeviceId: {},
 
     // Services
-    services: {strava: false, intervals: false, trainingPeaks: false},
+    services: {strava: false, trainingPeaks: false},
 
     // Account
     authState: '',
     accountEmail: '',
+
+    // WATTS account and background sync. `user` is undefined when signed out,
+    // which is a fully supported state — everything still works from idb.
+    user: undefined,
+    syncState: SyncState.signedOut,
+    syncError: '',
 };
 
 
@@ -264,37 +268,6 @@ xf.reg('ui:data-tile-switch-set', (index, db) => {
     models.dataTileSwitch.backup(db.dataTileSwitch);
 });
 
-// Intervals.icu API key: stored, then verified against the API. A successful
-// verify caches the athlete id and refreshes the planned-workout week.
-xf.reg('ui:intervals-api-key-set', async (key, db) => {
-    const value = models.intervalsApiKey.set(models.intervalsApiKey.parse?.(key) ?? key);
-    db.intervalsApiKey = value;
-    models.intervalsApiKey.backup(value);
-
-    if(value === '') {
-        db.intervalsAthleteId = '';
-        models.intervalsAthleteId.backup('');
-        xf.dispatch('services', {intervals: false});
-        return;
-    }
-
-    const athleteId = await models.api.intervals.verifyKey(value);
-
-    if(athleteId === '') {
-        xf.dispatch('action:intervals', ':key:invalid');
-        xf.dispatch('services', {intervals: false});
-        return;
-    }
-
-    db.intervalsAthleteId = athleteId;
-    models.intervalsAthleteId.backup(athleteId);
-    xf.dispatch('action:intervals', ':key:valid');
-    xf.dispatch('services', {intervals: true});
-
-    models.planned.getAthlete('intervals');
-    models.planned.wod('intervals');
-});
-
 // Targets
 xf.reg('ui:power-target-set', (powerTarget, db) => {
     db.powerTarget = models.powerTarget.set(powerTarget);
@@ -354,13 +327,19 @@ xf.reg(`ui:slope-target-dec`, (_, db) => {
 });
 
 // Profile
+//
+// FTP and weight go up as one record, so both are handed over on either edit.
+// The call is synchronous and does not block: it stamps a local-storage envelope
+// and wakes the queue.
 xf.reg('ui:ftp-set', (ftp, db) => {
     db.ftp = models.ftp.set(ftp);
     models.ftp.backup(db.ftp);
+    sync.settingsChanged({ftp: db.ftp, weight: db.weight});
 });
 xf.reg('ui:weight-set', (weight, db) => {
     db.weight = models.weight.set(weight);
     models.weight.backup(db.weight);
+    sync.settingsChanged({ftp: db.ftp, weight: db.weight});
 });
 xf.reg('ui:theme-switch', (_, db) => {
     db.theme = models.theme.switch(db.theme);
@@ -401,17 +380,19 @@ xf.reg('workout', (workout, db) => {
 xf.reg('ui:workout:select', (id, db) => {
     db.workout = models.workouts.get(db.workouts, id);
 });
-xf.reg('ui:planned:select', (id, db) => {
-    db.workout = models.planned.get(id);
-});
 xf.reg('ui:workout:remove', (id, db) => {
+    const removed = db.workouts.find((w) => equals(w.id, id));
     db.workouts = models.workouts.remove(db.workouts, id);
+    // After the removal, not before: this writes a tombstone back into the same
+    // idb row so the delete propagates rather than being undone by the next pull.
+    if(exists(removed)) sync.workoutRemoved(removed);
 });
 xf.reg('ui:workout:upload', async function(files, db) {
     for(let file of Object.values(files)) {
         const { result, name } = await models.workout.readFromFile(file);
         const workout = models.workout.parse(result, name);
         models.workouts.add(db.workouts, workout);
+        sync.workoutChanged(workout);
         xf.dispatch('db:workouts', db);
     }
 
@@ -419,6 +400,7 @@ xf.reg('ui:workout:upload', async function(files, db) {
 xf.reg('ui:workout:create', (zwo, db) => {
     const workout = models.workout.parse(zwo);
     models.workouts.add(db.workouts, workout);
+    sync.workoutChanged(workout);
     xf.dispatch('db:workouts', db);
 });
 // Save from the designer. Carries an explicit id so the first save creates a
@@ -435,11 +417,15 @@ xf.reg('ui:workout:save', (data, db) => {
     } else {
         models.workouts.add(db.workouts, workout);
     }
+    sync.workoutChanged(workout);
     xf.dispatch('db:workouts', db);
 });
 xf.reg('watch:stopped', (_, db) => {
     try {
         models.activity.createFromCurrent(db);
+        // The record is written to idb already stamped, so this only has to wake
+        // the queue: the summary goes up, then the FIT blob straight after.
+        sync.nudge();
         xf.dispatch('activity:save:success');
     } catch (err) {
         console.error(`Error on activity save: `, err);
@@ -452,6 +438,13 @@ xf.reg('activity:save:success', (e, db) => {
 });
 xf.sub('ui:activity:upload:by:id', (id) => {
     models.activity.upload(id);
+});
+// Deleting a ride writes a tombstone rather than dropping the row, so the
+// delete reaches the other devices instead of being undone by the next pull.
+xf.reg('ui:activity:remove', async function(id, db) {
+    await models.activity.remove(id);
+    db.activity = db.activity.filter((summary) => !equals(summary.id, id));
+    sync.nudge();
 });
 // download the current activity as a .fit file
 xf.reg('ui:activity:save', (_, db) => {
@@ -518,6 +511,102 @@ xf.reg('account:email', (email, db) => {
 
 
 //
+// WATTS account and sync
+//
+// The intents below are the only thing the views touch. Everything they do is
+// safe to fail: signing in is the only way to get multi-device history, but the
+// app runs identically without it.
+//
+
+xf.reg('sync:user', (user, db) => {
+    db.user = user;
+    db.accountEmail = user?.email ?? '';
+});
+
+xf.reg('sync:state', (state, db) => {
+    db.syncState = state;
+    if(state !== SyncState.error) db.syncError = '';
+});
+
+// A pull brought down workouts recorded on another device. The built-in library
+// is regenerated rather than stored, so it is prepended here rather than merged.
+xf.reg('sync:workouts', (workouts, db) => {
+    const defaults = db.workouts.filter((w) => w.isDefault);
+    db.workouts = defaults.concat((workouts ?? []).filter((w) => !exists(w.deleted_at)));
+});
+
+xf.reg('sync:activities', (summaries, db) => {
+    db.activity = summaries ?? [];
+});
+
+// The rider profile changed on another device (or this device's edit lost the
+// last-write-wins comparison). Deliberately not routed through ui:ftp-set: that
+// would stamp the incoming value as a fresh local edit and push it straight back.
+xf.reg('sync:settings', (settings, db) => {
+    if(exists(settings?.ftp)) {
+        db.ftp = models.ftp.set(settings.ftp);
+        models.ftp.backup(db.ftp);
+    }
+    if(exists(settings?.weight)) {
+        db.weight = models.weight.set(settings.weight);
+        models.weight.backup(db.weight);
+    }
+});
+
+xf.reg('ui:account:register', async function(credentials, db) {
+    const { email, password } = credentials ?? {};
+    try {
+        db.syncError = '';
+        await sync.register(email, password);
+    } catch(error) {
+        db.syncError = error?.message ?? 'Could not create the account.';
+    }
+});
+
+xf.reg('ui:account:login', async function(credentials, db) {
+    const { email, password } = credentials ?? {};
+    try {
+        db.syncError = '';
+        await sync.login(email, password);
+    } catch(error) {
+        db.syncError = error?.message ?? 'Could not sign in.';
+    }
+});
+
+xf.reg('ui:account:logout', async function(_, db) {
+    await sync.logout();
+});
+
+// The rider asked for a reset code. This resolves the same way whether or not
+// the address has an account — the server will not say, so the view moves on to
+// the code screen either way and the inbox is what answers the question.
+xf.reg('ui:account:reset-request', async function(data, db) {
+    const { email } = data ?? {};
+    try {
+        db.syncError = '';
+        await sync.requestPasswordReset(email);
+        xf.dispatch('account:reset-code-sent', email);
+    } catch(error) {
+        db.syncError = error?.message ?? 'Could not send a code. Try again in a moment.';
+    }
+});
+
+// A correct code sets the new password and signs this device in, so success
+// needs no signal of its own: db:user changes and the card renders signed in.
+xf.reg('ui:account:reset-confirm', async function(data, db) {
+    const { email, code, password } = data ?? {};
+    try {
+        db.syncError = '';
+        await sync.resetPassword(email, code, password);
+    } catch(error) {
+        db.syncError = error?.message ?? 'Could not reset the password.';
+    }
+});
+
+xf.sub('ui:account:sync-now', () => sync.drain());
+
+
+//
 xf.reg('app:start', async function(_, db) {
 
     db.ftp = models.ftp.set(models.ftp.restore());
@@ -533,16 +622,18 @@ xf.reg('app:start', async function(_, db) {
     db.sources = models.sources.set(models.sources.restore());
     db.accountEmail = window.localStorage.getItem('accountEmail') ?? '';
 
-    db.intervalsApiKey = models.intervalsApiKey.set(models.intervalsApiKey.restore());
-    db.intervalsAthleteId = models.intervalsAthleteId.set(models.intervalsAthleteId.restore());
-    xf.dispatch('services', {intervals: db.intervalsApiKey !== ''});
+    // The intervals.icu integration has been removed. Clear what it left behind
+    // rather than leaving a live third-party API key sitting in localStorage for
+    // a feature that no longer exists.
+    ['intervalsApiKey', 'intervalsAthleteId', 'planned'].forEach((key) => {
+        window.localStorage.removeItem(key);
+    });
 
     // IndexedDB Schema Version 3
     await idb.start('store', 3, ['session', 'workouts', 'activity']);
     db.workouts = await models.workouts.restore();
     db.activity = await models.activity.restore();
     db.workout = models.workout.restore(db);
-    models.planned.restore();
 
     await models.session.restore(db);
     xf.dispatch('workout:restore');
@@ -560,6 +651,20 @@ xf.reg('app:start', async function(_, db) {
     sound.start();
 
     models.api.start();
+
+    // A browser that predates profile sync holds an FTP and a weight but no sync
+    // envelope, so without this those values would stay on this one device. Only
+    // writes one when there is none, and only for values the rider has actually
+    // changed — see seedSettings in sync-model.js for why that matters.
+    sync.seedFromLocal(
+        {ftp: db.ftp, weight: db.weight},
+        {ftp: models.ftp.default, weight: models.weight.default},
+    );
+
+    // Restores the session if there is one and starts the background queue.
+    // Deliberately not awaited: the app is fully usable before it resolves, and
+    // is fully usable if it never does.
+    sync.start();
     // TODO: remove
     // xf.dispatch(`ui:page-set`, 'workouts');
 

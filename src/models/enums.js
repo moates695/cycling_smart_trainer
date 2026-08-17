@@ -6,7 +6,6 @@ const DialogMsg = {
 
 const OAuthService = {
     strava: 'strava',
-    intervals: 'intervals',
     trainingPeaks: 'trainingPeaks',
 };
 

@@ -1345,7 +1345,7 @@ class NavigationStack extends HTMLElement {
             // Turnstile used to load here for the sign-in form. Auuki's sitekey is
             // registered to auuki.com (Cloudflare allows localhost for any sitekey,
             // which is why it only ever rendered locally), and the account it
-            // guarded is gone — see the Connections panel in index.html.
+            // guarded is gone — see the Account panel in index.html.
             return;
         }
 
@@ -1496,10 +1496,9 @@ class OAuth extends HTMLElement {
         const self = this;
         this.abortController = new AbortController();
         this.signal = { signal: self.abortController.signal };
-        this.services = {strava: false, intervals: false};
+        this.services = {strava: false};
 
         this.$stravaButton = self.querySelector('#strava--connect--button');
-        this.$intervalsButton = self.querySelector('#intervals--connect--button');
         this.$tpButton = self.querySelector('#tp--connect--button');
 
         xf.sub('action:oauth', self.onAction.bind(this), this.signal);
@@ -1519,7 +1518,6 @@ class OAuth extends HTMLElement {
         let service = action.split(':')[1];
 
         if(service === 'strava' ||
-           service === 'intervals' ||
            service === 'trainingPeaks') {
 
             console.log(this.services[service]);
@@ -1534,9 +1532,6 @@ class OAuth extends HTMLElement {
     render(services) {
         if(exists(this.$stravaButton)) {
             this.$stravaButton.textContent = services.strava ? 'Disconnect' : 'Connect';
-        }
-        if(exists(this.$intervalsButton)) {
-            this.$intervalsButton.textContent = services.intervals ? 'Disconnect' : 'Connect';
         }
         if(exists(this.$tpButton)) {
             this.$tpButton.textContent = services.tp ? 'Disconnect' : 'Connect';

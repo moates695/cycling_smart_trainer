@@ -345,19 +345,19 @@
                     <navigation-action
                         id="link--settings-profile"
                         class="watts-set--tab"
-                        action="settings:profile" topic=":nav">Connections
+                        action="settings:profile" topic=":nav">Account
                     </navigation-action>
                 </header>
                 <!-- profile--sub-tab (Account) -->
                 <div id="view--settings-profile" class="sub-tab">
                     <!--
-                        Connections (was the Account sub-tab).
+                        Account.
 
                         The upstream Auuki account lived behind api.auuki.com, whose
                         CORS allowlist holds exactly one origin (https://auuki.com), so
                         sign-in, Turnstile and the OAuth connect flows could never work
-                        from this fork. Intervals.icu is now reached directly from the
-                        browser with a personal API key instead.
+                        from this fork. The WATTS account below replaces it and talks to
+                        our own backend (server/, proxied at /api).
 
                         Strava and TrainingPeaks are not listed: their OAuth token
                         exchange needs a client secret, so they cannot work without a
@@ -365,43 +365,335 @@
                     -->
                     <div class="watts-acct watts-conn-page">
                         <div class="watts-acct--left">
-                            <intervals-key class="watts-set--card watts-set--card-grad watts-conn-key">
-                                <h2 class="watts-set--eyebrow">Intervals.icu</h2>
-                                <p class="watts-acct--sub">
-                                    Paste your personal API key to pull planned workouts,
-                                    FTP and weight, and to upload completed rides.
-                                </p>
+                            <!--
+                                The WATTS account. Optional: signing in is what
+                                makes custom workouts, ride history and the
+                                rider profile durable and available on another
+                                browser or device. Everything still works
+                                signed out.
+                            -->
+                            <watts-account class="watts-set--card watts-set--card-grad watts-conn-key">
+                                <!--
+                                    Sign in and Create account are two panels in one
+                                    card; watts-account.js shows exactly one at a time.
+                                    They are separate <form>s on purpose, so password
+                                    managers see a login form and a registration form
+                                    rather than one ambiguous form that changes meaning.
+                                -->
+                                <div id="account--signed-out">
+                                    <!--
+                                        Sign in | Sign up. Which of the two the
+                                        rider wants is the first decision this card
+                                        asks for, so it sits at the top as a visible
+                                        choice rather than as a link buried under
+                                        whichever form happened to load first.
+                                        watts-account.js marks one .active and shows
+                                        the matching panel below. Hidden during the
+                                        password reset flow, where neither of the two
+                                        is the state the rider is in.
 
-                                <div class="watts-field">
-                                    <label class="watts-field--label" for="intervals--key--input">API key</label>
-                                    <input id="intervals--key--input"
-                                           class="input"
-                                           name="intervals_api_key"
-                                           type="password"
-                                           autocomplete="off"
-                                           spellcheck="false"
-                                           placeholder="Paste key from intervals.icu"
-                                           value="" />
+                                        Plain toggle buttons with aria-pressed, not
+                                        role="tab": tabs promise arrow key navigation
+                                        that nothing here implements.
+                                    -->
+                                    <div id="account--seg"
+                                         class="watts-acct--seg"
+                                         role="group"
+                                         aria-label="Sign in or sign up">
+                                        <button id="account--to-sign-in"
+                                                class="watts-acct--seg-btn active"
+                                                type="button"
+                                                aria-pressed="true">Sign in</button>
+                                        <button id="account--to-sign-up"
+                                                class="watts-acct--seg-btn"
+                                                type="button"
+                                                aria-pressed="false">Sign up</button>
+                                    </div>
+
+                                    <!-- panel: sign in -->
+                                    <div id="account--panel-sign-in">
+                                        <p class="watts-acct--sub">
+                                            Pick up your custom workouts, ride history
+                                            and rider profile on this device.
+                                        </p>
+
+                                        <form id="signin--form" autocomplete="on">
+                                            <div class="watts-field">
+                                                <label class="watts-field--label" for="signin--email">Email</label>
+                                                <input id="signin--email"
+                                                       class="input"
+                                                       name="email"
+                                                       type="email"
+                                                       autocomplete="username"
+                                                       spellcheck="false"
+                                                       placeholder="you@example.com" />
+                                            </div>
+
+                                            <div class="watts-field">
+                                                <label class="watts-field--label" for="signin--password">Password</label>
+                                                <!--
+                                                    Every password field carries a show / hide
+                                                    button. Typing a password blind on a phone,
+                                                    mid warm up, is where the wrong-password
+                                                    round trips come from. watts-account.js
+                                                    finds these generically — the button acts on
+                                                    the input beside it — and forces them all
+                                                    back to hidden whenever the card clears.
+                                                -->
+                                                <div class="watts-pw">
+                                                    <input id="signin--password"
+                                                           class="input"
+                                                           name="password"
+                                                           type="password"
+                                                           autocomplete="current-password"
+                                                           placeholder="Your password" />
+                                                    <button class="watts-pw--toggle"
+                                                            type="button"
+                                                            aria-controls="signin--password"
+                                                            aria-pressed="false"
+                                                            aria-label="Show password">Show</button>
+                                                </div>
+                                            </div>
+
+                                            <div class="watts-conn-key--actions">
+                                                <button id="signin--submit"
+                                                        class="watts-btn-accent"
+                                                        type="submit">Sign in</button>
+                                            </div>
+                                        </form>
+
+                                        <p class="watts-acct--switch">
+                                            <button id="account--to-reset"
+                                                    class="watts-btn-link"
+                                                    type="button">Forgot your password?</button>
+                                        </p>
+                                    </div>
+
+                                    <!-- panel: create account -->
+                                    <div id="account--panel-sign-up" hidden>
+                                        <p class="watts-acct--sub">
+                                            Keep your custom workouts, ride history and
+                                            rider profile safe, and use them on more than
+                                            one device.
+                                        </p>
+
+                                        <form id="signup--form" autocomplete="on">
+                                            <div class="watts-field">
+                                                <label class="watts-field--label" for="signup--email">Email</label>
+                                                <input id="signup--email"
+                                                       class="input"
+                                                       name="email"
+                                                       type="email"
+                                                       autocomplete="username"
+                                                       spellcheck="false"
+                                                       placeholder="you@example.com" />
+                                            </div>
+
+                                            <div class="watts-field">
+                                                <label class="watts-field--label" for="signup--password">Password</label>
+                                                <div class="watts-pw">
+                                                    <input id="signup--password"
+                                                           class="input"
+                                                           name="password"
+                                                           type="password"
+                                                           autocomplete="new-password"
+                                                           minlength="10"
+                                                           placeholder="At least 10 characters" />
+                                                    <button class="watts-pw--toggle"
+                                                            type="button"
+                                                            aria-controls="signup--password"
+                                                            aria-pressed="false"
+                                                            aria-label="Show password">Show</button>
+                                                </div>
+                                            </div>
+
+                                            <div class="watts-field">
+                                                <label class="watts-field--label" for="signup--confirm">Confirm password</label>
+                                                <div class="watts-pw">
+                                                    <input id="signup--confirm"
+                                                           class="input"
+                                                           name="password_confirm"
+                                                           type="password"
+                                                           autocomplete="new-password"
+                                                           minlength="10"
+                                                           placeholder="Type it again" />
+                                                    <button class="watts-pw--toggle"
+                                                            type="button"
+                                                            aria-controls="signup--confirm"
+                                                            aria-pressed="false"
+                                                            aria-label="Show password">Show</button>
+                                                </div>
+                                            </div>
+
+                                            <div class="watts-conn-key--actions">
+                                                <button id="signup--submit"
+                                                        class="watts-btn-accent"
+                                                        type="submit">Create account</button>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                    <!--
+                                        panel: forgot password.
+
+                                        A code typed in here, not a link followed
+                                        from the inbox: a link opens whatever
+                                        browser handles mail — on iOS always
+                                        Safari, never the installed app — and the
+                                        session it produces would land there
+                                        rather than in the app being ridden.
+                                    -->
+                                    <div id="account--panel-reset-request" hidden>
+                                        <h2 class="watts-set--eyebrow">Reset password</h2>
+                                        <p class="watts-acct--sub">
+                                            Tell us the email on your account and we
+                                            will send you a six digit code.
+                                        </p>
+
+                                        <form id="reset--form" autocomplete="on">
+                                            <div class="watts-field">
+                                                <label class="watts-field--label" for="reset--email">Email</label>
+                                                <input id="reset--email"
+                                                       class="input"
+                                                       name="email"
+                                                       type="email"
+                                                       autocomplete="username"
+                                                       spellcheck="false"
+                                                       placeholder="you@example.com" />
+                                            </div>
+
+                                            <div class="watts-conn-key--actions">
+                                                <button id="reset--submit"
+                                                        class="watts-btn-accent"
+                                                        type="submit">Send code</button>
+                                            </div>
+                                        </form>
+
+                                        <p class="watts-acct--switch">
+                                            Remembered it?
+                                            <button id="reset--to-sign-in"
+                                                    class="watts-btn-link"
+                                                    type="button">Sign in</button>
+                                        </p>
+                                    </div>
+
+                                    <!--
+                                        panel: enter the emailed code.
+
+                                        The email field is present, read only and
+                                        marked as the username so a password
+                                        manager files the new password under the
+                                        right account rather than creating a
+                                        second entry.
+                                    -->
+                                    <div id="account--panel-reset-confirm" hidden>
+                                        <h2 class="watts-set--eyebrow">Enter your code</h2>
+                                        <p class="watts-acct--sub">
+                                            Check <strong id="reset-code--sent-to"></strong> for a
+                                            six digit code, then choose a new password.
+                                            The code lasts 15 minutes.
+                                        </p>
+
+                                        <form id="reset-code--form" autocomplete="on">
+                                            <input id="reset-code--email"
+                                                   class="watts-visually-hidden"
+                                                   name="email"
+                                                   type="email"
+                                                   autocomplete="username"
+                                                   tabindex="-1"
+                                                   readonly
+                                                   aria-hidden="true" />
+
+                                            <div class="watts-field">
+                                                <label class="watts-field--label" for="reset-code--code">Code</label>
+                                                <input id="reset-code--code"
+                                                       class="input"
+                                                       name="one-time-code"
+                                                       type="text"
+                                                       inputmode="numeric"
+                                                       autocomplete="one-time-code"
+                                                       spellcheck="false"
+                                                       maxlength="6"
+                                                       placeholder="123456" />
+                                            </div>
+
+                                            <div class="watts-field">
+                                                <label class="watts-field--label" for="reset-code--password">New password</label>
+                                                <div class="watts-pw">
+                                                    <input id="reset-code--password"
+                                                           class="input"
+                                                           name="password"
+                                                           type="password"
+                                                           autocomplete="new-password"
+                                                           minlength="10"
+                                                           placeholder="At least 10 characters" />
+                                                    <button class="watts-pw--toggle"
+                                                            type="button"
+                                                            aria-controls="reset-code--password"
+                                                            aria-pressed="false"
+                                                            aria-label="Show password">Show</button>
+                                                </div>
+                                            </div>
+
+                                            <div class="watts-field">
+                                                <label class="watts-field--label" for="reset-code--confirm">Confirm password</label>
+                                                <div class="watts-pw">
+                                                    <input id="reset-code--confirm"
+                                                           class="input"
+                                                           name="password_confirm"
+                                                           type="password"
+                                                           autocomplete="new-password"
+                                                           minlength="10"
+                                                           placeholder="Type it again" />
+                                                    <button class="watts-pw--toggle"
+                                                            type="button"
+                                                            aria-controls="reset-code--confirm"
+                                                            aria-pressed="false"
+                                                            aria-label="Show password">Show</button>
+                                                </div>
+                                            </div>
+
+                                            <div class="watts-conn-key--actions">
+                                                <button id="reset-code--submit"
+                                                        class="watts-btn-accent"
+                                                        type="submit">Set new password</button>
+                                            </div>
+                                        </form>
+
+                                        <p class="watts-acct--switch">
+                                            No code yet?
+                                            <button id="reset-code--resend"
+                                                    class="watts-btn-link"
+                                                    type="button">Send another</button>
+                                        </p>
+                                    </div>
                                 </div>
 
-                                <div class="watts-conn-key--actions">
-                                    <button id="intervals--key--save"
-                                            class="watts-btn-accent"
-                                            type="button">Connect</button>
-                                    <button id="intervals--key--clear"
-                                            class="watts-btn-chip"
-                                            type="button">Disconnect</button>
+                                <div id="account--signed-in" hidden>
+                                    <h2 class="watts-set--eyebrow">WATTS account</h2>
+                                    <p class="watts-acct--sub">
+                                        Signed in as <strong id="account--identity"></strong>
+                                    </p>
+                                    <div id="account--status" class="watts-acct--msg"></div>
+                                    <div class="watts-conn-key--actions">
+                                        <button id="account--sync-now"
+                                                class="watts-btn-accent"
+                                                type="button">Sync now</button>
+                                        <button id="account--sign-out"
+                                                class="watts-btn-chip"
+                                                type="button">Sign out</button>
+                                    </div>
                                 </div>
 
-                                <div id="intervals--key--msg" class="watts-acct--msg"></div>
+                                <div id="account--msg" class="watts-acct--msg"></div>
 
                                 <p class="watts-conn-key--help">
-                                    Find it on intervals.icu under
-                                    <strong>Settings &rarr; Developer &rarr; API Key</strong>.
-                                    The key is stored only in this browser and is sent
-                                    only to intervals.icu.
+                                    Your password is hashed with argon2id before it is
+                                    stored — nobody, including us, can read it back.
+                                    Signing in is optional: WATTS keeps working signed
+                                    out, offline, and mid-interval on bad wifi.
                                 </p>
-                            </intervals-key>
+                            </watts-account>
                         </div>
 
                         <div class="watts-acct--right">
@@ -411,22 +703,22 @@
                                     <div class="watts-why--item">
                                         <span class="watts-why--icon">&#9776;</span>
                                         <div>
-                                            <div class="watts-why--title">Planned workouts</div>
-                                            <div class="watts-why--desc">This week's calendar loads into the Workouts tab.</div>
+                                            <div class="watts-why--title">Custom workouts</div>
+                                            <div class="watts-why--desc">Anything you build in the designer follows your account.</div>
                                         </div>
                                     </div>
                                     <div class="watts-why--item">
                                         <span class="watts-why--icon">&#8617;</span>
                                         <div>
-                                            <div class="watts-why--title">FTP &amp; weight sync</div>
-                                            <div class="watts-why--desc">Rider profile follows your intervals.icu settings.</div>
+                                            <div class="watts-why--title">Ride history</div>
+                                            <div class="watts-why--desc">Past rides and their FIT files are kept, not capped.</div>
                                         </div>
                                     </div>
                                     <div class="watts-why--item">
                                         <span class="watts-why--icon">&#8613;</span>
                                         <div>
-                                            <div class="watts-why--title">Ride upload</div>
-                                            <div class="watts-why--desc">Completed activities post back to your calendar.</div>
+                                            <div class="watts-why--title">More than one device</div>
+                                            <div class="watts-why--desc">Sign in elsewhere and everything is already there.</div>
                                         </div>
                                     </div>
                                 </div>
@@ -438,8 +730,8 @@
                                     <img class="watts-conn--icon" alt="GC" src="images/connections/garmin-connect.png"/>
                                     <h3 class="watts-conn--name">Garmin</h3>
                                     <a class="watts-btn-chip"
-                                       href="https://connect.garmin.com/modern/import-data"
-                                       target="_blank">Import</a>
+                                       href="https://connect.garmin.com/app/import-data"
+                                       target="_blank">Upload</a>
                                 </div>
                             </div>
                         </div>
@@ -995,23 +1287,6 @@
             <symbol id="icon--strava" viewBox="0 0 64 64">
                 <path d="M41.03 47.852l-5.572-10.976h-8.172L41.03 64l13.736-27.124h-8.18" fill="#f9b797"/>
                 <path d="M27.898 21.944l7.564 14.928h11.124L27.898 0 9.234 36.876H20.35" fill="#f05222"/>
-            </symbol>
-            <symbol id="icon--intervals" viewBox="0 0 163.28571 163.28572" >
-                <g transform="translate(-22.678572,-31.75)">
-                    <rect
-                        style="fill:#dd0447;stroke-width:0.264583"
-                        id="rect844"
-                        width="163.28571"
-                        height="163.28572"
-                        x="22.678572"
-                        y="31.75" />
-                    <g transform="matrix(1.504571,0,0,1.504571,29.141305,37.164828)"
-                        fill="currentColor">
-                        <path
-                        d="M 98.569,57.02 77.278,54.093 69.022,17.449 69.01,17.389 C 68.621,15.678 67.296,14.25 65.473,13.817 62.921,13.212 60.361,14.79 59.756,17.342 L 48.048,66.696 37.007,32.288 36.992,32.24 c -0.437,-1.327 -1.514,-2.415 -2.965,-2.803 -2.286,-0.612 -4.636,0.746 -5.247,3.032 L 22.842,54.662 1.464,57.02 c -0.633,0.07 -1.156,0.57 -1.229,1.229 -0.084,0.763 0.466,1.449 1.229,1.534 l 24.618,2.715 c 1.702,0.189 3.342,-0.871 3.825,-2.573 l 0.123,-0.434 3.177,-11.179 11.488,35.134 c 0.433,1.292 1.5,2.371 2.918,2.735 2.224,0.571 4.491,-0.769 5.062,-2.993 l 0.007,-0.026 11.338,-44.156 4.502,20.453 0.132,0.603 c 0.465,2.084 2.459,3.497 4.611,3.201 l 25.302,-3.479 c 0.604,-0.083 1.104,-0.558 1.191,-1.191 0.108,-0.765 -0.426,-1.468 -1.189,-1.573 z"
-                        id="path847" />
-                    </g>
-                </g>
             </symbol>
             <symbol id="icon--image" viewBox="0 -960 960 960">
                 <path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z"/>

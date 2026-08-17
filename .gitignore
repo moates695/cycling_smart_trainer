@@ -13,3 +13,12 @@ env.js
 package-lock.json
 .parcel-cache/
 
+
+# backend
+/server/.env
+/server/.venv/
+/server/**/__pycache__/
+/server/.pytest_cache/
+
+# working document, not part of the source tree
+/PLAN.md
