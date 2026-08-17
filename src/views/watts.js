@@ -85,6 +85,17 @@ function toPoints(values, vmin, vmax, x0 = 0, x1 = 100, xSpan = values.length) {
     }).join(' ');
 }
 
+// The expand/collapse chevron shared by the workout and activity rows. A drawn
+// icon rather than a text glyph: "⌄"/"⌃" sit off-centre in their line box and
+// differ between fonts, so a row swapping one for the other appears to pivot
+// around the wrong point. This is one symmetrical icon that CSS rotates in
+// place when the row opens (see .watts-chev--icon).
+const chevronSvg = `
+    <svg class="watts-chev--icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <path d="M6 9 12 15 18 9" fill="none" stroke="currentColor"
+              stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+
 //
 // <power-zone-chip> — "Z5 · VO2" pill, coloured by the current 1s power as a
 // percentage of FTP.
@@ -495,4 +506,5 @@ export {
     rampGradient,
     zoneGradientStops,
     toPoints,
+    chevronSvg,
 };

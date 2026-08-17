@@ -10,7 +10,7 @@
 //
 import { xf, exists, empty, equals } from '../functions.js';
 import { models } from '../models/models.js';
-import { toPoints, zoneClassByPct } from './watts.js';
+import { toPoints, zoneClassByPct, chevronSvg } from './watts.js';
 
 // how many activities to reveal per page (initial view and each "Load more").
 const ACTIVITY_PAGE = 8;
@@ -263,7 +263,7 @@ class ActivityList extends HTMLElement {
                     ${this.metricCell(avgPower)}
                     ${this.metricCell(npTss)}
                     ${this.metricCell(avgHr, 'watts-arow--hr')}
-                    <span class="watts-chev">⌄</span>
+                    <span class="watts-chev">${chevronSvg}</span>
                 </div>
                 <div class="watts-arow--expand" hidden>
                     ${analysisHtml(data)}
@@ -300,7 +300,6 @@ class ActivityItem extends HTMLElement {
         this.id = this.dataset.id;
         this.head = this.querySelector('.watts-arow--head');
         this.expandCont = this.querySelector('.watts-arow--expand');
-        this.chev = this.querySelector('.watts-chev');
 
         xf.sub(`action:activity:${self.id}`, this.onAction.bind(this), this.signal);
         this.head.addEventListener('pointerup', this.onHeadClick.bind(this), this.signal);
@@ -325,13 +324,11 @@ class ActivityItem extends HTMLElement {
         });
         this.expandCont.hidden = false;
         this.classList.add('is-expanded');
-        this.chev.textContent = '⌃';
         this.isExpanded = true;
     }
     collapse() {
         this.expandCont.hidden = true;
         this.classList.remove('is-expanded');
-        this.chev.textContent = '⌄';
         this.isExpanded = false;
     }
     onAction(action) {

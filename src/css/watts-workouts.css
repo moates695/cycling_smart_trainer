@@ -276,13 +276,12 @@ workout-item.is-selected .watts-wsel--dot { transform: scale(1); }
 }
 .watts-start-pill:hover { background: rgba(200,246,81,.14); }
 
-/* chevron */
+/* chevron — a fixed square box that centres the icon on the row's midline; the
+   icon rotates about that centre so open and closed sit in the same place. */
 .watts-chev {
     color: var(--watts-text-dim);
-    font-size: 16px;
     width: 20px;
     height: 20px;
-    text-align: center;
     flex: 0 0 auto;
     user-select: none;
     display: grid;
@@ -290,6 +289,7 @@ workout-item.is-selected .watts-wsel--dot { transform: scale(1); }
 }
 .watts-chev--icon {
     display: block;
+    transform-origin: 50% 50%;
     transition: transform .18s ease;
 }
 
@@ -360,7 +360,8 @@ workout-item.is-selected .watts-wsel--dot { transform: scale(1); }
 }
 .watts-wrow--expand[hidden] { display: none; }
 
-workout-item.is-expanded .watts-chev--icon { transform: rotate(180deg); }
+workout-item.is-expanded .watts-chev--icon,
+activity-item.is-expanded .watts-chev--icon { transform: rotate(180deg); }
 
 /* profile graph inside the expansion */
 .watts-wprof { display: flex; }
@@ -513,7 +514,7 @@ workout-item.is-expanded .watts-chev--icon { transform: rotate(180deg); }
 .watts-alist--head,
 .watts-arow--head {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(0, 1fr)) 16px;
+    grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(0, 1fr)) 20px;
     gap: 12px;
     align-items: center;
 }

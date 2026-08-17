@@ -13,7 +13,7 @@ import { xf, exists, empty, equals, first, last } from '../functions.js';
 import { formatTime } from '../utils.js';
 import { models } from '../models/models.js';
 import { courseToGraph } from './workout-graph.js';
-import { zoneClassByPct, rampGradient } from './watts.js';
+import { zoneClassByPct, rampGradient, chevronSvg } from './watts.js';
 import {
     flattenSteps, shapeSteps, toSegments, rampPolygon,
 } from '../workouts/profile-shape.js';
@@ -180,15 +180,6 @@ function fullProfileHtml(steps, ftp, totalDuration) {
             <div class="watts-wprof--ticks">${ticks}</div>
         </div>`;
 }
-
-// A drawn chevron rather than a text glyph: "⌄"/"⌃" sit off-centre in their
-// line box and differ between fonts. One icon, rotated by CSS when the row is
-// open (see .watts-chev--icon).
-const chevronSvg = `
-    <svg class="watts-chev--icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-        <path d="M6 9.5 12 15.5 18 9.5" fill="none" stroke="currentColor"
-              stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`;
 
 // Small confirm dialog shared by the row actions that can't simply be undone.
 // Every caller-supplied string is written with textContent, so a workout name
