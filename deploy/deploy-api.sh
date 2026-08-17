@@ -12,6 +12,18 @@ cd "$(dirname "$0")/.."
 REMOTE=do
 REMOTE_DIR=/root/watts
 
+echo "== 0/4 Preflight =="
+# compose interpolates ${WATTS_DB_PASSWORD} into both the database container and
+# the API's DATABASE_URL, and reads it from $REMOTE_DIR/.env, which setup-api.sh
+# writes. Unset, compose substitutes an empty string with only a warning: the
+# database would come up with a blank password and the API would fail to reach
+# it. Refuse to deploy rather than release that.
+ssh "$REMOTE" "grep -q '^WATTS_DB_PASSWORD=.' $REMOTE_DIR/.env 2>/dev/null" || {
+    echo "ERROR: no WATTS_DB_PASSWORD in $REMOTE:$REMOTE_DIR/.env — run setup-api.sh first."
+    exit 1
+}
+echo "   database password present"
+
 echo "== 1/4 Ship the server source =="
 ssh "$REMOTE" "mkdir -p $REMOTE_DIR"
 rsync -az --delete \

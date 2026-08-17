@@ -48,9 +48,19 @@ docker run --rm \
 echo "   config valid"
 
 echo "== 4/5 Recreate nginx-proxy-prod with new mount + config =="
+# --force-recreate because the template is a bind mount rendered by the image's
+# envsubst entrypoint at container start. Plain `up -d` compares the service
+# definition, sees an unchanged compose file, and leaves the old container
+# running against the old rendered config — so a vhost edit appears to deploy
+# and silently does nothing. It only worked the first time because adding the
+# /var/www/watts volume did change the definition.
+#
+# Every other site on this proxy blips for the second or two the container takes
+# to come back. That is the cost of a vhost change here and there is no reload
+# path that avoids it, since the render happens at startup.
 export ENV_NAME=prod
 cd "$BASE"
-docker compose -p backend-prod up -d --no-deps nginx
+docker compose -p backend-prod up -d --force-recreate --no-deps nginx
 
 echo "== 5/5 Verify =="
 sleep 2

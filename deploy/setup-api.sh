@@ -65,7 +65,19 @@ ensure_key WATTS_SMTP_PASSWORD ""
 ensure_key WATTS_SMTP_FROM "WATTS <auth.moates@gmail.com>"
 
 echo "== 2/5 Bring up watts-postgres =="
-set -a; source "$ENV_FILE"; set +a
+# The database password is the one value compose interpolates rather than passes
+# through env_file, so it has to reach compose as a variable. It goes in
+# $REMOTE_DIR/.env, which compose reads by itself: an `export` here would only
+# last the length of this script, and every later `docker compose -p watts ...`
+# run by hand on the droplet would silently interpolate an empty password.
+#
+# Sourcing $ENV_FILE instead would be the obvious move and is wrong: it is a
+# docker env_file, not a shell script. WATTS_SMTP_FROM is deliberately unquoted
+# so the From header keeps its display name, which makes `WATTS <auth@...>` a
+# redirection as far as bash is concerned, and `source` dies on that line.
+sed -n 's/^WATTS_DB_PASSWORD=//p' "$ENV_FILE" | (umask 077; sed 's/^/WATTS_DB_PASSWORD=/' > "$REMOTE_DIR/.env")
+grep -q '^WATTS_DB_PASSWORD=.' "$REMOTE_DIR/.env" || { echo "   ERROR: no WATTS_DB_PASSWORD in $ENV_FILE"; exit 1; }
+echo "   wrote $REMOTE_DIR/.env for compose interpolation"
 cd "$REMOTE_DIR"
 docker compose -p watts up -d watts-postgres
 echo "   waiting for health ..."
@@ -98,9 +110,12 @@ docker run --rm \
 echo "   config valid"
 
 echo "== 5/5 Reload nginx-proxy-prod =="
+# --force-recreate for the reason spelled out in setup-droplet.sh: the template
+# is rendered at container start, so an unchanged compose file means plain
+# `up -d` leaves the old config live.
 export ENV_NAME=prod
 cd "$BASE"
-docker compose -p backend-prod up -d --no-deps nginx
+docker compose -p backend-prod up -d --force-recreate --no-deps nginx
 
 echo
 echo "Done. Now run deploy/deploy-api.sh to build and release the API."
