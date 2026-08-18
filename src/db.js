@@ -465,6 +465,11 @@ xf.reg('lock:beforeunload', (e, db) => {
     // backup session
     models.session.backup(db);
 });
+// The page is going away or into the background (see lock.js) — save the ride
+// so a reload picks it up where the rider left it.
+xf.reg('session:backup', (e, db) => {
+    models.session.backup(db);
+});
 xf.reg('lock:release', (e, db) => {
     // backup session
     models.session.backup(db);

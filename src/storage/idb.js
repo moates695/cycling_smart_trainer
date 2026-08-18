@@ -100,6 +100,10 @@ function IDB(args = {}) {
     }
 
     function transaction(storeName, method, param = undefined, type = 'readonly') {
+        // Callers reach idb from event handlers, which can fire before start()
+        // has opened the database — a backup on a pause, say. Nothing to read or
+        // write yet, rather than a thrown error inside the handler.
+        if(!exists(db)) return undefined;
         if(!db.objectStoreNames.contains(storeName)) return undefined;
 
         let transaction = db.transaction(storeName, type);

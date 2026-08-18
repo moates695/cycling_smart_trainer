@@ -20,6 +20,15 @@ class WakeLock {
         window.addEventListener('beforeunload', e => {
             xf.dispatch('lock:beforeunload');
         });
+
+        // beforeunload never fires on iOS and an idb write started in it is not
+        // guaranteed to finish anywhere, so the ride is also saved from pagehide
+        // and from the page going hidden — the last points a backgrounded PWA is
+        // reliably still alive. All three write the same record to the same key,
+        // so firing more than once on a reload costs nothing.
+        window.addEventListener('pagehide', e => {
+            xf.dispatch('session:backup');
+        });
     }
     checkVisibility() {
         let isVisible = false;
@@ -37,6 +46,8 @@ class WakeLock {
 
         if(self.checkVisibility()) {
             self.lockScreen();
+        } else {
+            xf.dispatch('session:backup');
         }
     }
     async lockScreen() {

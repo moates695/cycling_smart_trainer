@@ -1,5 +1,5 @@
 import { equals, exists, empty, first, last, xf, avg, max, clamp, toFixed, print, } from './functions.js';
-import { kphToMps, mpsToKph, timeDiff, pad } from './utils.js';
+import { kphToMps, mpsToKph, timeDiff, pad, formatTime } from './utils.js';
 import { models } from './models/models.js';
 import { ControlMode, } from './ble/enums.js';
 import { TimerStatus, EventType, } from './activity/enums.js';
@@ -610,10 +610,35 @@ xf.reg('watch:started',   (x, db) => {
         db.lapStartTime = Date.now(); // if first lap
     }
 });
-xf.reg('watch:paused',  (x, db) => db.watchStatus = 'paused');
+xf.reg('watch:paused',  (x, db) => {
+    db.watchStatus = 'paused';
+    // A paused ride has no clock, so the periodic backup stops with it. Write
+    // one now, or a reload while paused comes back to whenever the clock last
+    // crossed a backup boundary.
+    models.session.backup(db);
+});
 xf.reg('watch:stopped', (x, db) => db.watchStatus = 'stopped');
 // Play pressed, waiting for the rider to turn the pedals.
 xf.reg('watch:armed',   (x, db) => db.watchArmed = x);
+
+// A ride whose workout ran to the end but was never stopped comes back from idb
+// unsaved (see models.session.restore) — stopping is the only thing that writes
+// an activity. Ask on the way in, while the rider still remembers the ride.
+// Cancel keeps it: the ride is on the clock, paused, and can be stopped and
+// saved at any point after.
+xf.sub('session:unsaved', (session) => {
+    const name = session?.workout?.meta?.name ?? 'Your last ride';
+    const duration = formatTime({value: session?.elapsed ?? 0, format: 'mm:ss'});
+
+    confirmModal({
+        head: 'Unsaved ride',
+        body: `${name} (${duration}) finished but was never saved. ` +
+              `Save it to your activities?`,
+        confirmLabel: 'Save ride',
+        confirmClass: 'wl-confirm--go',
+        onConfirm: () => xf.dispatch('ui:watchStop', {confirmed: true}),
+    });
+});
 
 xf.reg('watch:elapsed', models.session.elapsed);
 xf.reg('watch:lap', models.session.lap);

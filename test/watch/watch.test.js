@@ -492,3 +492,69 @@ describe('stopping asks in the app dialog', () => {
         expect(document.querySelector('.wl-modal-backdrop')).toBe(null);
     });
 });
+
+// A ride whose workout ran to the end but was never stopped comes back from idb
+// unsaved — only a stop writes it to the activity list. The app asks for it on
+// the way in, and whichever way the rider answers, the ride is still there to
+// save until they do.
+describe('an unsaved ride from a previous page', () => {
+    afterEach(() => {
+        document.querySelectorAll('.wl-modal-backdrop').forEach((el) => el.remove());
+    });
+
+    function click(selector) {
+        document.querySelector(selector)
+            .dispatchEvent(new Event('pointerup', {bubbles: true}));
+    }
+
+    // What models.session.restore() leaves for a finished session: the ride,
+    // paused, with the finished workout state taken off it (see
+    // test/models/session-restore.test.js), then the question.
+    function restoreFinished() {
+        Object.assign(store, {
+            elapsed:       1830,
+            watchStatus:   'paused',
+            workoutStatus: 'stopped',
+            intervalIndex: 0,
+            stepIndex:     0,
+            lapStartTime:  Date.now(),
+            workout,
+        });
+
+        xf.dispatch('workout:restore');
+        xf.dispatch('session:unsaved', {elapsed: 1830, workout});
+    }
+
+    test('asks, naming the ride and how long it was', () => {
+        restoreFinished();
+
+        const $modal = document.querySelector('.wl-modal-backdrop .wl-modal');
+        expect($modal).not.toBe(null);
+        expect($modal.querySelector('.wl-modal-head').textContent).toBe('Unsaved ride');
+        expect($modal.querySelector('.wl-modal-body').textContent).toContain('Test');
+        expect($modal.querySelector('.wl-modal-body').textContent).toContain('30:30');
+    });
+
+    test('saving stops the ride, which is what writes the activity', () => {
+        const seen = [];
+        xf.sub('watch:stopped', () => seen.push('watch:stopped'));
+
+        restoreFinished();
+        click('.wl-confirm');
+
+        expect(db.watchStatus).toBe('stopped');
+        expect(seen.length).toBe(1);
+    });
+
+    test('not now keeps the ride, and it can still be saved later', () => {
+        restoreFinished();
+        click('.wl-cancel');
+
+        expect(db.elapsed).toBe(1830);
+        expect(db.watchStatus).toBe('paused');
+
+        xf.dispatch('ui:watchStop', {confirmed: true});
+
+        expect(db.watchStatus).toBe('stopped');
+    });
+});

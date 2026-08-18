@@ -64,20 +64,63 @@ describe('session restore', () => {
         expect(await idb.getAll(STORE)).toEqual([]);
     });
 
-    // The bug this guards: a finished workout restores as `workoutStatus:
-    // 'done'`, which the watch reads as a free ride — the interval clock counts
-    // up instead of down, and startWorkout() will not open the workout again
-    // while the finished interval index is still on it. Every reload landed
-    // there until the ride was stopped by hand.
-    test('a workout that ran to the end is dropped, not resumed', async () => {
+    // A workout that ran to the end but was never stopped was never saved
+    // either, and those recorded seconds are the whole ride. They come back so
+    // the rider can still save them.
+    test('a workout that ran to the end keeps its ride', async () => {
         await idb.put(STORE, record({workoutStatus: 'done', intervalIndex: 44}));
 
         const db = freshDb();
         await models.session.restore(db);
 
-        expect(db.restored).toBe(undefined);
+        expect(db.restored).toBe(true);
+        expect(db.elapsed).toBe(600);
+        expect(await idb.getAll(STORE)).not.toEqual([]);
+    });
+
+    // The bug this guards: restored as `workoutStatus: 'done'` the watch reads
+    // the session as a free ride — the interval clock counts up instead of
+    // down, and beginWorkout() will not open the workout again while the
+    // finished interval index is still on it. Every reload landed there until
+    // the ride was stopped by hand.
+    test('a workout that ran to the end comes back paused, not finished', async () => {
+        await idb.put(STORE, record({workoutStatus: 'done', intervalIndex: 44}));
+
+        const db = freshDb();
+        await models.session.restore(db);
+
         expect(db.workoutStatus).toBe('stopped');
+        expect(db.watchStatus).toBe('paused');
         expect(db.intervalIndex).toBe(0);
-        expect(await idb.getAll(STORE)).toEqual([]);
+        expect(db.stepIndex).toBe(0);
+    });
+
+    // Saving is the rider's call, so the app has to ask — and the ride has to
+    // still be there when they answer.
+    test('a ride that was never saved announces itself', async () => {
+        await idb.put(STORE, record({workoutStatus: 'done', elapsed: 1830}));
+
+        const heard = [];
+        const onUnsaved = (e) => heard.push(e.detail.data);
+        window.addEventListener('session:unsaved', onUnsaved);
+
+        await models.session.restore(freshDb());
+        window.removeEventListener('session:unsaved', onUnsaved);
+
+        expect(heard.length).toBe(1);
+        expect(heard[0].elapsed).toBe(1830);
+    });
+
+    test('a ride still under way asks nothing', async () => {
+        await idb.put(STORE, record());
+
+        const heard = [];
+        const onUnsaved = (e) => heard.push(e.detail.data);
+        window.addEventListener('session:unsaved', onUnsaved);
+
+        await models.session.restore(freshDb());
+        window.removeEventListener('session:unsaved', onUnsaved);
+
+        expect(heard).toEqual([]);
     });
 });

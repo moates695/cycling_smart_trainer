@@ -999,39 +999,75 @@ class Workouts extends Model {
 }
 
 
+// How often a running ride is written to idb. The whole session record goes out
+// on every write, so this is a trade between disk and how much of a ride a
+// reload can cost — it used to be a minute, which meant a refresh in the first
+// minute lost the ride outright and any later one lost up to 59 s of it.
+const BACKUP_INTERVAL_S = 10;
+
 function Session(args = {}) {
     let name = 'session';
 
     function backup(db) {
+        // Nothing on the clock is nothing worth keeping: restore drops such a
+        // record anyway, and this is also called from the page lifecycle, which
+        // fires on every tab switch whether there is a ride on or not.
+        if(!(db.elapsed > 0)) return;
         idb.put('session', idb.setId(dbToSession(db), 0));
     }
 
-    // A session is worth restoring only while the ride is still going. One whose
-    // workout ran to the end is over, and bringing it back does not put the
-    // rider back in it: `workoutStatus: 'done'` restores along with everything
-    // else, so the watch picks the session up as a free ride with the interval
-    // clock counting up instead of down, and startWorkout() refuses to open the
-    // workout again while the finished index is still on it. Every reload lands
-    // there until the ride is stopped by hand, which reads as an app that will
-    // not start. Clear it, the same as a session with nothing on the clock.
+    // 'done' is the workout's own end state (see the `workout:done` reducer),
+    // not one of the watch's TimerStatus values.
     function isFinished(session) {
         return equals(session?.workoutStatus, 'done');
     }
 
+    // A ride whose workout ran to the end but was never stopped was also never
+    // saved — only a stop writes an activity. The recorded seconds are kept, so
+    // the rider can still save them, but the finished workout state that came
+    // with them is not: restored as `workoutStatus: 'done'` the watch reads the
+    // session as a free ride with the interval clock counting up, and
+    // beginWorkout() refuses to open the workout again while the finished
+    // interval index is still on it. Every reload landed there until the ride
+    // was stopped by hand, which reads as an app that will not start.
+    function unfinish(session) {
+        return {
+            ...session,
+            watchStatus:      TimerStatus.paused,
+            workoutStatus:    TimerStatus.stopped,
+            intervalIndex:    0,
+            stepIndex:        0,
+            intervalDuration: 0,
+            stepDuration:     0,
+            lapTime:          0,
+            stepTime:         0,
+        };
+    }
+
     async function restore(db) {
-        const sessions = await idb.getAll(`${name}`);
+        const sessions = await idb.getAll(`${name}`) ?? [];
         xf.dispatch(`${name}:restore`, sessions);
         console.log(`:idb :restore '${name}' :length ${sessions.length}`);
 
-        let session = last(sessions);
+        if(empty(sessions)) return;
 
-        if(!empty(sessions)) {
-            if(session.elapsed > 0 && !isFinished(session)) {
-                sessionToDb(db, session);
-            } else {
-                idb.clear(`${name}`);
-            }
+        const session = last(sessions);
+
+        // Nothing on the clock is nothing to come back to.
+        if(!(session.elapsed > 0)) {
+            idb.clear(`${name}`);
+            return;
         }
+
+        if(isFinished(session)) {
+            sessionToDb(db, unfinish(session));
+            // The app cannot know whether the rider wants this one kept, and
+            // throwing it away is the one answer that cannot be undone. Ask.
+            xf.dispatch(`${name}:unsaved`, session);
+            return;
+        }
+
+        sessionToDb(db, session);
     }
 
     function sessionToDb(db, session) {
@@ -1106,6 +1142,12 @@ function Session(args = {}) {
     }
 
     function reset(db) {
+        // The ride is over and saved, so the crash-recovery copy goes with it.
+        // Without this the finished ride stays on disk and the next reload
+        // restores a session the rider already stopped — backup() will not
+        // overwrite it, since a reset db has nothing on the clock to write.
+        idb.clear(`${name}`);
+
         db.records = [];
         db.lap = [];
         db.laps = [];
@@ -1181,10 +1223,8 @@ function Session(args = {}) {
 
         db.lap.push(record);
 
-        if(equals(db.elapsed % 60, 0)) {
-            // models.session.backup(db);
+        if(equals(db.elapsed % BACKUP_INTERVAL_S, 0)) {
             backup(db);
-            console.log(`backing up of ${db.records.length} records ...`);
         }
     }
 
