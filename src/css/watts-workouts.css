@@ -654,7 +654,13 @@ activity-item.watts-arow { display: block; position: static; }
     padding-left: 2px;
 }
 .watts-aprof--bars.is-dense { gap: 0; }
-.watts-aprof--bars .watts-wprof--seg .watts-wprof--bar { opacity: .4; }
+/* The bars are the recorded power, the same series the power line above them
+   is drawn from, so they have to start where the line does — no inset. */
+.watts-aprof--bars { padding-left: 0; }
+.watts-aprof--bars .watts-wprof--seg .watts-wprof--bar {
+    opacity: .4;
+    border-radius: 0;
+}
 
 .watts-aprof--overlay {
     position: absolute;

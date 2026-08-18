@@ -285,6 +285,25 @@ describe('Sim device', () => {
         expect(names).toContain('--');
     });
 
+    test('the replace effect connects, then swaps device', () => {
+        // the heart rate monitor is off after the previous test
+        xf.dispatch('ui:ble:heartRateMonitor:replace');
+        tick(1000);
+        expect(sim.state().connected.heartRateMonitor).toBe(true);
+        expect(last(names)).toBe('Sim HRM 0002');
+
+        // tapping again lands on another device rather than disconnecting
+        xf.dispatch('ui:ble:heartRateMonitor:replace');
+        tick(1000);
+        expect(sim.state().connected.heartRateMonitor).toBe(true);
+        expect(last(names)).toBe('Sim HRM 0022');
+
+        // leave it off again for the tests that follow
+        xf.dispatch('ui:ble:heartRateMonitor:switch');
+        tick(1000);
+        expect(sim.state().connected.heartRateMonitor).toBe(false);
+    });
+
     test('a disconnected device stops streaming', () => {
         const count = seen.heartRate.length;
         sim.ride();

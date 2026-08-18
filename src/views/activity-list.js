@@ -3,20 +3,24 @@
 //
 // Renders each saved activity as a summary row (mini recorded-power profile,
 // name + date, duration, avg power, NP · TSS, avg HR) that expands in place
-// to a Ride Analysis graph: the planned interval bars dimmed underneath the
+// to a Ride Analysis graph: the recorded power as dimmed bars underneath the
 // recorded power / heart-rate / cadence traces. Activities saved before the
 // summary metrics existed render with — placeholders and a "no recorded
 // data" note instead of the graph.
 //
 import { xf, exists, empty, equals } from '../functions.js';
 import { models } from '../models/models.js';
-import { toPoints, zoneClassByPct, chevronSvg } from './watts.js';
+import { toPoints, zoneClassByPct, timeTicksHtml, chevronSvg } from './watts.js';
+import { confirmModal } from './confirm-modal.js';
 
 // how many activities to reveal per page (initial view and each "Load more").
 const ACTIVITY_PAGE = 8;
 
 // number of bars in the mini recorded-power thumbnail.
 const MINI_BARS = 18;
+
+// number of bars behind the expanded Ride Analysis graph.
+const ANALYSIS_BARS = 60;
 
 function esc(value) {
     return String(value ?? '')
@@ -71,7 +75,25 @@ function powerGradientDefs(gradId) {
     </linearGradient></defs>`;
 }
 
-// Ride Analysis: dimmed planned bars + power/HR/cadence overlays + axes.
+// Background of the analysis graph: the recorded power resampled into dimmed
+// zone-coloured bars.
+//
+// This deliberately does *not* draw the planned workout profile. A ride can be
+// paused, rewound, skipped or abandoned part way through, so the plan doesn't
+// line up in time with what was actually ridden — drawing it underneath claims
+// an alignment the recording can't back up. Only what the rider did is shown.
+function recordedBarsHtml(powers, ftp) {
+    return resample(powers, ANALYSIS_BARS).map((p) => {
+        const pct = (p / ftp) * 100;
+        const height = Math.min(100, (pct / 150) * 100);
+        return `<div class="watts-wprof--seg">
+                    <div class="watts-wprof--bar zone-${zoneClassByPct(pct)}"
+                         style="height: ${height}%;"></div>
+                </div>`;
+    }).join('');
+}
+
+// Ride Analysis: dimmed recorded-power bars + power/HR/cadence overlays + axes.
 function analysisHtml(data) {
     const trace = data.trace;
     if(empty(trace?.p ?? [])) {
@@ -88,26 +110,19 @@ function analysisHtml(data) {
         return `<span style="top: ${top}%;"><b>${pct}%</b><i>${watts}W</i></span>`;
     }).join('');
 
-    // planned interval bars, dimmed underneath the recorded traces.
-    const plan = data.plan ?? [];
-    const dense = plan.length > 24 ? ' is-dense' : '';
-    const bars = plan.map((seg) => {
-        const height = Math.max(4, Math.min(100, (seg.pct / 150) * 100));
-        return `<div class="watts-wprof--seg" style="flex-grow: ${Math.max(1, seg.d)};">
-                    <div class="watts-wprof--bar zone-${zoneClassByPct(seg.pct)}"
-                         style="height: ${height}%;"></div>
-                </div>`;
-    }).join('');
+    // dimmed zone-coloured bars of the *recorded* power, underneath the traces.
+    const bars = recordedBarsHtml(trace.p ?? [], ftp);
 
     const powPts = toPoints(trace.p ?? [], 0, ftp * 1.5);
     const hrPts  = toPoints(trace.h ?? [], 90, 180);
     const cadPts = toPoints(trace.c ?? [], 40, 120);
 
-    const total = data.duration ?? 0;
-    const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => {
-        const mins = Math.round((total * f) / 60);
-        return `<span class="watts-wprof--tick" style="left: ${f * 100}%;">${mins}:00</span>`;
-    }).join('');
+    // The traces are resampled onto an even grid of riding seconds (see
+    // models.summarize), so the axis is that same span — `trace.dur` — not the
+    // ride's stored duration, which for an older activity was recorded before
+    // the two were made to agree.
+    const total = trace.dur ?? data.duration ?? 0;
+    const ticks = timeTicksHtml(total);
 
     return `
         <div class="watts-aexp--head">
@@ -123,7 +138,7 @@ function analysisHtml(data) {
             <div class="watts-aprof--plot">
                 <div class="watts-wprof--grid" style="top: 33.3%;"></div>
                 <div class="watts-wprof--grid" style="top: 66.6%;"></div>
-                <div class="watts-aprof--bars${dense}">${bars}</div>
+                <div class="watts-aprof--bars is-dense">${bars}</div>
                 <svg class="watts-aprof--overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
                     ${powerGradientDefs(gradId)}
                     <polyline points="${cadPts}" fill="none" stroke="#38bdf8" stroke-width="1.5"
@@ -337,16 +352,33 @@ class ActivityItem extends HTMLElement {
             return;
         }
         if(action === ':remove') {
-            // Through the store rather than the model directly, so the delete
-            // also leaves the list and gets propagated to the account.
-            xf.dispatch('ui:activity:remove', this.id);
-            this.remove();
+            this.confirmDelete();
             return;
         }
         if(action === ':download') {
             models.activity.download(this.id);
             return;
         }
+    }
+    // A recorded ride can't be recovered once it's gone — and the delete
+    // button sits right next to Download inside the expanded row — so ask
+    // first, in the app's own dialog rather than the browser's.
+    confirmDelete() {
+        const self = this;
+        const name = (this.querySelector('.watts-arow--name')?.textContent ?? '').trim()
+                  || 'this ride';
+        confirmModal({
+            head: 'Delete ride',
+            body: `Delete “${name}”? This can’t be undone.`,
+            confirmLabel: 'Delete',
+            confirmClass: 'btn--danger',
+            onConfirm: () => {
+                // Through the store rather than the model directly, so the delete
+                // also leaves the list and gets propagated to the account.
+                xf.dispatch('ui:activity:remove', self.id);
+                self.remove();
+            },
+        });
     }
 }
 

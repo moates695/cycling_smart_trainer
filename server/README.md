@@ -88,6 +88,15 @@ the droplet cannot drift from what the code expects.
   parameters recorded in the hash string so `check_needs_rehash()` can upgrade them later.
 - The session cookie is opaque, `HttpOnly; Secure; SameSite=Lax`. Only its sha256 is stored, so a
   database leak yields no usable live sessions.
+- **Sessions slide; they do not expire on a schedule.** A rider on their own turbo should never find
+  themselves signed out mid-warm-up, so every authenticated request more than 15 minutes past the
+  last one (`SESSION_TOUCH_INTERVAL` in `app/deps.py`) pushes `expires_at` and the cookie's
+  `max-age` out to a fresh `WATTS_SESSION_TTL_DAYS` window. The default is 365 days — a rolling
+  year of disuse, not a fixed lifetime — which is also under Chrome's 400 day cap on `max-age`.
+  Renewing the cookie matters as much as renewing the row: without it the browser drops a cookie
+  the server still considers live. Only logout, a password change and a password reset end a
+  session; there is deliberately no idle cut-off on top of the rolling window, because a second,
+  shorter horizon is exactly the surprise sign-out this is meant to prevent.
 - Login returns identical text and takes similar time for an unknown email and a wrong password, so
   the endpoint does not confirm which addresses are registered.
 - The primary key on `workouts` and `activities` is `(user_id, id)`, not `id`. Ids arrive from

@@ -281,12 +281,21 @@ function Connectable(args = {}) {
     //   so we want to listen for when it becomes availbale again. This is used to
     //   recover devices that have droped.
     //
+    // - connect({device: GATTDevice})
+    //   here the device has already been requested by client code after the
+    //   Connectable was constructed, so it replaces the one we hold and we
+    //   connect straight to it. Used when swapping one device for another.
+    //
     async function connect(args = {}) {
         if(equals(getStatus(), Status.connecting) ||
            equals(getStatus(), Status.connected)) return;
 
         const requesting = args.requesting ?? false;
         const watching = args.watching ?? false;
+
+        if(exists(args.device)) {
+            _device = args.device;
+        }
 
         // guard
         // stop execution on missuse and notify the developer

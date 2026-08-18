@@ -21,9 +21,10 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://watts:watts@host.docker.internal:5432/watts_dev"
 
     session_cookie_name: str = "watts_session"
-    session_ttl_days: int = 30
-    # Sessions idle for longer than this are treated as dead even if not expired.
-    session_idle_days: int = 14
+    # A rolling window, not a fixed lifetime: every authenticated request pushes
+    # the session's expiry (and the cookie's) this far into the future again, so
+    # only a device left untouched for a year is ever asked to sign in again.
+    session_ttl_days: int = 365
 
     # Peppers the password reset codes. Six digits is a space of one million, so
     # a bare sha256 column is reversible from a database leak in milliseconds;

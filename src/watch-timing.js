@@ -9,10 +9,12 @@
 // Two independent rider settings, either of which can be on without the other:
 //   auto start — the pedals begin the ride, with no play press: from a
 //                standstill they start it, and after a pause they pick it back
-//                up. All the same gesture, so they are one switch. A pause the
-//                rider pressed asks a little more than one the app made: they
-//                have to have actually stopped, and then pedal for AUTO_START_S,
-//                before it counts as picking the ride back up.
+//                up. All the same gesture, so they are one switch. Ending a ride
+//                asks a little more than a pause the app made: after a stop, or
+//                a pause the rider pressed, they have to have actually stopped
+//                and then pedal for AUTO_START_S before it counts. Otherwise the
+//                watts still spinning down off the button press would answer for
+//                them and start a fresh ride seconds after they ended one.
 //   auto pause — the clock stops when the pedals do
 //
 // watch.js owns the timer worker and the event bus; this module owns the rules,
@@ -55,11 +57,13 @@ function timingDefaults() {
         // pick themselves up on the first stroke; a pause the rider pressed
         // waits for them to stop and then get going again.
         pausedAutomatically: false,
-        // Whether the rider has actually stopped since the pause began. Pausing
-        // is a mid-stroke gesture — the trainer keeps reporting the watts they
-        // pressed the button on — so a rider pause only becomes something the
-        // pedals can undo once they have come to a halt.
-        coastedSincePause: false,
+        // Whether the rider has been seen at rest since the clock last ran.
+        // Pausing and stopping are both mid-stroke gestures — the trainer keeps
+        // reporting the watts they pressed the button on — so neither becomes
+        // something the pedals can undo until the rider has come to a halt. A
+        // watch that has never run starts out at rest, so a standing start is
+        // not asked to coast first.
+        coastedSinceRunning: true,
     };
 }
 
@@ -119,13 +123,13 @@ function onPowerSample(args = {}) {
                     idleCounter: 0,
                     startCounter: 0,
                     pausedAutomatically: true,
-                    coastedSincePause: false,
+                    coastedSinceRunning: false,
                 },
                 action: TimingAction.autoPause,
             };
         }
         return {
-            state:  {...state, idleCounter, startCounter: 0, coastedSincePause: false},
+            state:  {...state, idleCounter, startCounter: 0, coastedSinceRunning: false},
             action: TimingAction.none,
         };
     }
@@ -134,18 +138,25 @@ function onPowerSample(args = {}) {
     // without play being pressed at all — the setting the 3, 2, 1 countdown
     // used to belong to.
     if(equals(status, 'stopped')) {
+        // Rest first, the same rule and for the same reason as a rider pause:
+        // stop ends the ride mid-stroke and the trainer freewheels the watts it
+        // was turning for a good few seconds afterwards, which would otherwise
+        // start a brand new ride three seconds after the rider ended one. A
+        // standing start has already been at rest, so it costs nothing there.
+        const coasted      = state.coastedSinceRunning || !pedalling;
         // Counting only while the setting is on means switching it on mid-ride
         // starts a fresh confirmation rather than firing straight away.
-        const startCounter = (settings.autoStart && pedalling) ?
-              state.startCounter + 1 : 0;
-        if(settings.autoStart && startCounter >= AUTO_START_S) {
+        const eligible     = settings.autoStart && coasted;
+        const startCounter = (eligible && pedalling) ? state.startCounter + 1 : 0;
+
+        if(eligible && startCounter >= AUTO_START_S) {
             return {
-                state:  {...state, startCounter: 0, idleCounter: 0, coastedSincePause: false},
+                state:  {...state, startCounter: 0, idleCounter: 0, coastedSinceRunning: false},
                 action: TimingAction.launch,
             };
         }
         return {
-            state:  {...state, startCounter, idleCounter: 0, coastedSincePause: false},
+            state:  {...state, startCounter, idleCounter: 0, coastedSinceRunning: coasted},
             action: TimingAction.none,
         };
     }
@@ -156,7 +167,7 @@ function onPowerSample(args = {}) {
         // the rider stopping for a moment mid-interval shouldn't cost them 3s.
         if(settings.autoStart && state.pausedAutomatically && pedalling) {
             return {
-                state:  {...state, idleCounter: 0, startCounter: 0, coastedSincePause: false},
+                state:  {...state, idleCounter: 0, startCounter: 0, coastedSinceRunning: false},
                 action: TimingAction.autoResume,
             };
         }
@@ -166,24 +177,26 @@ function onPowerSample(args = {}) {
         // deliberately enough that the watts still spinning down off the press
         // can't answer for them. Same AUTO_START_S confirmation as a standing
         // start, for the same reason.
-        const coasted      = state.coastedSincePause || !pedalling;
+        const coasted      = state.coastedSinceRunning || !pedalling;
         const eligible     = settings.autoStart && coasted;
         const startCounter = (eligible && pedalling) ? state.startCounter + 1 : 0;
 
         if(eligible && startCounter >= AUTO_START_S) {
             return {
-                state:  {...state, startCounter: 0, idleCounter: 0, coastedSincePause: false},
+                state:  {...state, startCounter: 0, idleCounter: 0, coastedSinceRunning: false},
                 action: TimingAction.autoResume,
             };
         }
         return {
-            state:  {...state, idleCounter: 0, startCounter, coastedSincePause: coasted},
+            state:  {...state, idleCounter: 0, startCounter, coastedSinceRunning: coasted},
             action: TimingAction.none,
         };
     }
 
+    // Some status the watch does not otherwise know about. Leave the rest flag
+    // alone rather than answering for a transition we have not seen.
     return {
-        state:  {...state, idleCounter: 0, startCounter: 0, coastedSincePause: false},
+        state:  {...state, idleCounter: 0, startCounter: 0},
         action: TimingAction.none,
     };
 }

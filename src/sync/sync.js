@@ -50,6 +50,12 @@ const ACTIVITY_STORE = 'activity';
 // its settings the same way whether or not there is an account.
 const SETTINGS_KEY = 'sync:settings';
 
+// The account this device last signed in as. The session itself is an httpOnly
+// cookie the browser keeps and JavaScript cannot read, so this is only the
+// identity that goes with it — enough to stay signed in through a launch with
+// no network rather than dropping the rider back to the sign-in card.
+const IDENTITY_KEY = 'sync:identity';
+
 // A quiet period between drains. Short enough that a ride saved on the turbo is
 // on the other device by the time you have showered; long enough not to matter.
 const DRAIN_INTERVAL_MS = 60 * 1000;
@@ -66,6 +72,25 @@ function readCursor(userId) {
 
 function writeCursor(userId, cursor) {
     window.localStorage.setItem(cursorKey(userId), String(cursor ?? 0));
+}
+
+function readIdentity() {
+    try {
+        const raw = window.localStorage.getItem(IDENTITY_KEY);
+        const parsed = exists(raw) ? JSON.parse(raw) : undefined;
+        return exists(parsed?.id) ? parsed : undefined;
+    } catch(error) {
+        return undefined;
+    }
+}
+
+function writeIdentity(user) {
+    if(!exists(user?.id)) return;
+    window.localStorage.setItem(IDENTITY_KEY, JSON.stringify({id: user.id, email: user.email ?? ''}));
+}
+
+function clearIdentity() {
+    window.localStorage.removeItem(IDENTITY_KEY);
 }
 
 function readSettings() {
@@ -112,6 +137,9 @@ function Sync() {
 
     // -- session ---------------------------------------------------------
 
+    // Sessions are meant to survive: the cookie is long lived and slides forward
+    // on every call, so the only thing that signs a device out is the rider
+    // asking for it or the server saying the session is gone.
     async function restore() {
         try {
             const me = await api.auth.me();
@@ -119,11 +147,29 @@ function Sync() {
             schedule(0);
             return me;
         } catch(error) {
-            // 401 is the ordinary "not signed in" case and is not worth a
-            // console error; anything else means the backend is not reachable,
-            // which the app is designed to survive.
-            forget();
-            return undefined;
+            const status = error instanceof ApiError ? error.status : undefined;
+
+            // 401 is the server's answer that this cookie is no longer a
+            // session — the ordinary "not signed in" case, and not worth a
+            // console error.
+            if(isAuthFailure(status)) {
+                forget();
+                return undefined;
+            }
+
+            // Anything else means the backend could not be reached: offline,
+            // flaky wifi at the track, a deploy in progress. That says nothing
+            // about the session, so the last known account is adopted and the
+            // drain retries in the background. Signing the rider out here would
+            // be the app inventing a logout the server never asked for.
+            const known = readIdentity();
+            if(!exists(known)) {
+                forget();
+                return undefined;
+            }
+            adopt(known);
+            schedule(0);
+            return known;
         }
     }
 
@@ -131,6 +177,7 @@ function Sync() {
         user = me;
         cursor = readCursor(me.id);
         attempt = 0;
+        writeIdentity(me);
         setState(SyncState.idle);
         xf.dispatch('sync:user', me);
     }
@@ -139,6 +186,7 @@ function Sync() {
         user = undefined;
         cursor = 0;
         stop();
+        clearIdentity();
         setState(SyncState.signedOut);
         xf.dispatch('sync:user', undefined);
     }

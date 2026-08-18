@@ -187,6 +187,8 @@ function Sim(args = {}) {
     // sim state — connection is per device, so the switches behave like the
     // real ones (dropping the HRM must not take the trainer with it)
     const connected   = {};
+    // which of the two simulated units of each device type is in use
+    const units       = {};
     let riding        = false;
     let power         = 0;
     let cadence       = 0;
@@ -225,6 +227,18 @@ function Sim(args = {}) {
         deviceTypes.forEach((deviceType) => {
             xf.sub(`ui:${id(deviceType)}:switch`, () => {
                 connected[deviceType] ? disconnect(deviceType) : connect(deviceType);
+            });
+
+            // the topbar chips search for another device rather than toggling:
+            // connect when off, and when already on swap in the other simulated
+            // unit, which is what picking a different device in the browser's
+            // chooser does
+            xf.sub(`ui:${id(deviceType)}:replace`, () => {
+                if(connected[deviceType]) {
+                    units[deviceType] = ((units[deviceType] ?? 0) + 1) % 2;
+                    disconnect(deviceType);
+                }
+                connect(deviceType);
             });
         });
 
@@ -291,15 +305,18 @@ function Sim(args = {}) {
         dropoutTimer = setTimeout(() => connect(deviceType), ms);
     }
 
+    // Each device type has two units, so a chip set to replace has something
+    // other than the current device to land on.
     function nameFor(deviceType) {
         const names = {
-            controllable:     'Sim Trainer 0001',
-            heartRateMonitor: 'Sim HRM 0002',
-            powerMeter:       'Sim Power 0003',
-            smo2:             'Sim Moxy 0004',
-            coreTemp:         'Sim Core 0005',
+            controllable:     ['Sim Trainer 0001', 'Sim Trainer 0011'],
+            heartRateMonitor: ['Sim HRM 0002',     'Sim HRM 0022'],
+            powerMeter:       ['Sim Power 0003',   'Sim Power 0033'],
+            smo2:             ['Sim Moxy 0004',    'Sim Moxy 0044'],
+            coreTemp:         ['Sim Core 0005',    'Sim Core 0055'],
         };
-        return names[deviceType] ?? `Sim ${deviceType}`;
+        const unit = units[deviceType] ?? 0;
+        return names[deviceType]?.[unit] ?? `Sim ${deviceType} ${unit + 1}`;
     }
 
     function start() {

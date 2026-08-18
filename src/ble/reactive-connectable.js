@@ -123,6 +123,34 @@ function ReactiveConnectable(args = {}) {
         }
     }
 
+    // Search for a device and swap it in, instead of toggling the connection.
+    // A connected device is only dropped once the rider has picked another one,
+    // so dismissing the browser's chooser leaves the current ride untouched.
+    // NOTE: request() has to be reached synchronously from the click that got us
+    // here, or the browser refuses the chooser for want of user activation.
+    async function onReplace() {
+        if(!connectable.isConnected()) {
+            connectable.connect({requesting: true});
+            return;
+        }
+
+        let device;
+
+        try {
+            device = await connectable.request();
+        } catch(e) {
+            // chooser dismissed, or nothing found: keep the device we have
+            print.log(`ble: replace: cancelled: keeping: ${connectable.getName()}`);
+            return;
+        }
+
+        if(!exists(device)) return;
+        if(equals(device.id, connectable.getId())) return;
+
+        await connectable.disconnect();
+        await connectable.connect({device});
+    }
+
     function onMode(x) {
         mode = x;
     }
@@ -162,6 +190,7 @@ function ReactiveConnectable(args = {}) {
         signal = { signal: abortController.signal };
 
         xf.sub(`ui:${getIdentifier()}:switch`, onSwitch, signal);
+        xf.sub(`ui:${getIdentifier()}:replace`, onReplace, signal);
 
         if(equals(deviceType, Device.controllable)) {
             xf.sub('db:mode',             onMode, signal);

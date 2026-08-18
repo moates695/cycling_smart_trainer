@@ -8,6 +8,7 @@ import {
     TimingAction, timingDefaults, onPowerSample,
 } from './watch-timing.js';
 import { timer } from './timer-worker.js';
+import { confirmModal } from './views/confirm-modal.js';
 
 // Media-player "prev" grace window (seconds). If the "prev" button is pressed
 // within this many seconds of entering the current interval, jump to the start
@@ -110,10 +111,17 @@ class Watch {
             // callers that have already asked the user — loading a different
             // workout from the library mid-ride — pass {confirmed: true} so we
             // don't prompt twice for the same decision.
-            const stop = e?.confirmed || confirm('Confirm Stop?');
-            if(stop) {
-                self.stop();
-            }
+            if(e?.confirmed) { self.stop(); return; }
+            // Stopping ends the ride and saves it, so ask first — in the app's
+            // own dialog rather than the browser's, which on a phone slides in
+            // over the whole screen mid-interval.
+            confirmModal({
+                head: 'Stop workout',
+                body: 'This ends the ride and saves it to your activities.',
+                confirmLabel: 'Stop and save',
+                confirmClass: 'btn--danger',
+                onConfirm: () => self.stop(),
+            });
         });
     }
     isStarted()        { return this.state        === 'started'; };
@@ -216,7 +224,7 @@ class Watch {
             pausedAutomatically: false,
             idleCounter: 0,
             startCounter: 0,
-            coastedSincePause: false,
+            coastedSinceRunning: false,
         };
 
         timer.postMessage('start');

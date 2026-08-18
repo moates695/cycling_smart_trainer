@@ -12,7 +12,7 @@
 // disconnectedCallback. Pure/DOM-free maths is kept in tiny helpers so it stays
 // readable.
 //
-import { xf, exists, clamp, last } from '../functions.js';
+import { xf, exists, clamp, first, last } from '../functions.js';
 import { formatTime } from '../utils.js';
 import { workoutCategoryColor, WORKOUT_CATEGORY_FALLBACK_COLOR } from '../workouts/categories.js';
 
@@ -83,6 +83,40 @@ function toPoints(values, vmin, vmax, x0 = 0, x1 = 100, xSpan = values.length) {
         const y = clamp(2, 98, 100 - ((v - vmin) / span) * 100);
         return `${x.toFixed(2)},${y.toFixed(2)}`;
     }).join(' ');
+}
+
+// Time axis under a profile graph. Ticks land on a round interval — 30 s, a
+// minute, five, ten... — chosen so there are at most TIME_TICKS_MAX of them,
+// rather than at fixed quarters of the width: a quarter of a 57:12 ride is
+// 14:18, and labelling it "14:00" quietly mislabels the axis. Positions are
+// proportional, so the labels line up with the trace above them.
+const TIME_TICK_STEPS_S = [15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200];
+const TIME_TICKS_MAX = 6;
+
+// m:ss under an hour, h:mm:ss over it.
+function timeLabel(seconds) {
+    const total = Math.max(0, Math.round(seconds));
+    const secs = String(total % 60).padStart(2, '0');
+    const mins = Math.floor(total / 60) % 60;
+    const hours = Math.floor(total / 3600);
+    return hours > 0 ?
+        `${hours}:${String(mins).padStart(2, '0')}:${secs}` :
+        `${mins}:${secs}`;
+}
+
+function timeTicksHtml(total) {
+    if(!(total > 0)) return '';
+    const step = TIME_TICK_STEPS_S.find((s) => (total / s) <= TIME_TICKS_MAX) ??
+          last(TIME_TICK_STEPS_S);
+    const ticks = [];
+    for(let t = 0; t <= total; t += step) {
+        // The last round tick can sit right on top of the end of the axis;
+        // drop it rather than overprint.
+        if((total - t) < (step * 0.35) && t > 0) break;
+        ticks.push(`<span class="watts-wprof--tick" style="left: ${(t / total) * 100}%;">${timeLabel(t)}</span>`);
+    }
+    ticks.push(`<span class="watts-wprof--tick" style="left: 100%;">${timeLabel(total)}</span>`);
+    return ticks.join('');
 }
 
 // The expand/collapse chevron shared by the workout and activity rows. A drawn
@@ -462,28 +496,40 @@ class WorkoutCategory extends HTMLElement {
 customElements.define('workout-category', WorkoutCategory);
 
 //
+// Initials for the avatar. The account is only ever known by its email, so the
+// "name" is the local part — marcus@… is one word, marcus.oates@… is two. One
+// word gives one letter, more than one gives first + last (middle names are
+// skipped, the way initials normally are).
+//
+function accountInitials(email) {
+    const local = (email ?? '').split('@')[0];
+    const words = local.split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 0);
+    if(words.length === 0) return '';
+    if(words.length === 1) return words[0][0].toUpperCase();
+    return (first(words)[0] + last(words)[0]).toUpperCase();
+}
+
+//
 // <profile-avatar> — top-bar account button. Shows "?" when signed out and the
-// account's first letter when signed in (the backend only knows an email, so
-// that's the letter shown). Click opens Settings → Account.
+// account's initials when signed in. Click opens Settings → Account.
+//
+// `db.user` is the WATTS account, set by sync.js whenever a session is adopted
+// — at sign-in and again on every launch, including one with no network. The
+// legacy `db.authState` belongs to the upstream Auuki backend and says nothing
+// about this account.
 //
 class ProfileAvatar extends HTMLElement {
     connectedCallback() {
         this.abortController = new AbortController();
         this.signal = { signal: this.abortController.signal };
-        this.signedIn = false;
         this.email = '';
-        xf.sub('db:authState', this.onAuthState.bind(this), this.signal);
-        xf.sub('db:accountEmail', this.onEmail.bind(this), this.signal);
+        xf.sub('db:user', this.onUser.bind(this), this.signal);
         this.addEventListener('pointerup', this.onEffect.bind(this), this.signal);
         this.render();
     }
     disconnectedCallback() { this.abortController.abort(); }
-    onAuthState(state) {
-        this.signedIn = state === ':password:profile';
-        this.render();
-    }
-    onEmail(email) {
-        this.email = email ?? '';
+    onUser(user) {
+        this.email = user?.email ?? '';
         this.render();
     }
     onEffect() {
@@ -491,14 +537,16 @@ class ProfileAvatar extends HTMLElement {
         xf.dispatch('action:nav', 'settings:profile');
     }
     render() {
-        const known = this.signedIn && this.email.length > 0;
-        this.textContent = known ? this.email[0].toUpperCase() : '?';
+        const initials = accountInitials(this.email);
+        const known = initials.length > 0;
+        this.textContent = known ? initials : '?';
         this.classList.toggle('is-signed-in', known);
     }
 }
 customElements.define('profile-avatar', ProfileAvatar);
 
 export {
+    accountInitials,
     wattsZones,
     zoneByPct,
     zoneClassByPct,
@@ -506,5 +554,7 @@ export {
     rampGradient,
     zoneGradientStops,
     toPoints,
+    timeLabel,
+    timeTicksHtml,
     chevronSvg,
 };

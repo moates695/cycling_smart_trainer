@@ -1192,11 +1192,16 @@
                     </div> <!-- end menu -->
 
                     <div class="watts-conn">
-                        <connection-switch for="ble:controllable" id="switch-controllable" class="watts-pill">
+                        <!-- effect="replace" so a tap searches for another device
+                             rather than dropping the connected one; disconnecting
+                             stays on the Settings device cards. -->
+                        <connection-switch for="ble:controllable" id="switch-controllable" class="watts-pill"
+                                           effect="replace" title="Change trainer">
                             <span class="connection-switch--indicator watts-pill--dot off"></span>
                             <span class="watts-pill--label"><data-view prop="ble:controllable:name">Controllable</data-view></span>
                         </connection-switch>
-                        <connection-switch for="ble:heartRateMonitor" id="switch-hrm" class="watts-pill">
+                        <connection-switch for="ble:heartRateMonitor" id="switch-hrm" class="watts-pill"
+                                           effect="replace" title="Change heart rate monitor">
                             <span class="connection-switch--indicator watts-pill--dot off"></span>
                             <span class="watts-pill--label"><data-view prop="ble:heartRateMonitor:name">Heart Rate</data-view></span>
                         </connection-switch>

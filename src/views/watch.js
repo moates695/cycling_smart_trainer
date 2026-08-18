@@ -27,14 +27,16 @@ class Watch extends HTMLElement {
         // this.dom.workout.addEventListener('pointerup', this.onWorkoutStart);
         this.dom.save.addEventListener(`pointerup`, this.onSave, this.signal);
 
-        this.renderInit(this.dom);
+        this.status  = 'stopped';
+        this.armed   = false;
+        this.elapsed = 0;
 
-        this.status = 'stopped';
-        this.armed  = false;
+        this.renderInit(this.dom);
 
         xf.sub(`db:watchStatus`, this.onWatchStatus.bind(this), this.signal);
         xf.sub(`db:workoutStatus`, this.onWorkoutStatus.bind(this), this.signal);
         xf.sub(`db:watchArmed`, this.onArmed.bind(this), this.signal);
+        xf.sub(`db:elapsed`, this.onElapsed.bind(this), this.signal);
         xf.sub(`db:lock`, this.onLock.bind(this), this.signal);
     }
     disconnectedCallback() {
@@ -66,6 +68,14 @@ class Watch extends HTMLElement {
         if(this.armed) { this.renderArmed(this.dom); }
         else           { this.onWatchStatus(this.status); }
     }
+    // Stop ends and saves the ride, so it has to stay reachable for as long as
+    // there is a ride to end — including while paused. Availability tracks
+    // elapsed time, not watchStatus: anything past 0s is a ride in progress.
+    onElapsed(elapsed) {
+        const was = this.elapsed;
+        this.elapsed = elapsed ?? 0;
+        if((was > 0) !== (this.elapsed > 0)) this.renderStop(this.dom);
+    }
     onWorkoutStatus(status) {
         if(status === 'started') { this.renderWorkoutStarted(this.dom); }
         if(status === 'done')    {  }
@@ -82,11 +92,12 @@ class Watch extends HTMLElement {
     // 'grid' overrides the hide AND keeps the icon centred — 'inline-block'
     // centred nothing (pushed the icon to the top-left) and '' fell back to the
     // hide rule so the buttons never appeared.
-    // Stop is always present in the control bar; it's only enabled while the
-    // watch is actually running (disabled/greyed when paused or stopped).
-    setStopEnabled(dom, enabled) {
+    // Stop is always present in the control bar, and enabled whenever the ride
+    // has any elapsed time on it — started or paused. It only greys out before
+    // the first second is on the clock, and again after a stop resets it to 0.
+    renderStop(dom) {
         dom.stop.style.display = 'grid';
-        dom.stop.classList.toggle('is-disabled', !enabled);
+        dom.stop.classList.toggle('is-disabled', !(this.elapsed > 0));
     };
     // Back/next stay visible in every state: while stopped the watch is
     // "waiting to start" (same as paused), and prev/next pre-select the
@@ -96,10 +107,10 @@ class Watch extends HTMLElement {
         dom.save.style.display    = 'none';
         dom.back.style.display    = 'grid';
         dom.forward.style.display = 'grid';
-        this.setStopEnabled(dom, false);
+        this.renderStop(dom);
     };
-    // Waiting for the rider: pause is the way out, and nothing is running to
-    // stop or save yet.
+    // Waiting for the rider: pause is the way out, and there is nothing to save
+    // yet. Stop stays available if this is a resume of a ride already underway.
     renderArmed(dom) {
         dom.start.style.display   = 'none';
         dom.save.style.display    = 'none';
@@ -107,7 +118,7 @@ class Watch extends HTMLElement {
         dom.pause.classList.add('is-armed');
         dom.back.style.display    = 'grid';
         dom.forward.style.display = 'grid';
-        this.setStopEnabled(dom, false);
+        this.renderStop(dom);
     };
     renderStarted(dom) {
         dom.pause.classList.remove('is-armed');
@@ -116,7 +127,7 @@ class Watch extends HTMLElement {
         dom.pause.style.display   = 'grid';
         dom.back.style.display    = 'grid';
         dom.forward.style.display = 'grid';
-        this.setStopEnabled(dom, true);
+        this.renderStop(dom);
     };
     renderPaused(dom) {
         dom.pause.classList.remove('is-armed');
@@ -126,7 +137,7 @@ class Watch extends HTMLElement {
         // before resuming (workoutStatus stays 'started' through a pause).
         dom.back.style.display     = 'grid';
         dom.forward.style.display  = 'grid';
-        this.setStopEnabled(dom, false);
+        this.renderStop(dom);
     };
     renderStopped(dom) {
         dom.pause.classList.remove('is-armed');
@@ -135,7 +146,7 @@ class Watch extends HTMLElement {
         dom.forward.style.display = 'grid';
         dom.save.style.display    = 'grid';
         dom.start.style.display   = 'grid';
-        this.setStopEnabled(dom, false);
+        this.renderStop(dom);
     };
     renderWorkoutStarted(dom) {
         // dom.workout.style.display = 'none';

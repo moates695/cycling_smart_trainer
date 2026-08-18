@@ -124,13 +124,38 @@ def test_an_expired_session_is_rejected_and_removed(client, user):
         assert db.scalar(select(UserSession)) is None
 
 
-def test_an_idle_session_is_rejected(client, user):
+def test_a_session_in_use_slides_forward_rather_than_expiring(client, user):
+    # The rider should never be signed out from under a device they keep using,
+    # so a request past the touch window pushes both the row's expiry and the
+    # cookie's max-age out to a fresh full window.
     with session_factory() as db:
         session = db.scalar(select(UserSession))
+        was = session.expires_at
         session.last_seen_at = datetime.now(UTC) - timedelta(days=90)
         db.commit()
 
-    assert client.get("/api/auth/me").status_code == 401
+    response = client.get("/api/auth/me")
+    assert response.status_code == 200
+    assert "watts_session" in response.cookies
+
+    with session_factory() as db:
+        session = db.scalar(select(UserSession))
+    assert session.expires_at > was
+    assert session.last_seen_at > datetime.now(UTC) - timedelta(minutes=1)
+
+
+def test_a_session_used_within_the_window_is_left_alone(client, user):
+    # The renewal is throttled: a busy client syncing every minute should not
+    # write the row or repeat the Set-Cookie header on every request.
+    with session_factory() as db:
+        before = db.scalar(select(UserSession)).expires_at
+
+    response = client.get("/api/auth/me")
+    assert response.status_code == 200
+    assert "watts_session" not in response.cookies
+
+    with session_factory() as db:
+        assert db.scalar(select(UserSession)).expires_at == before
 
 
 def test_password_change_requires_the_current_password(client, user):

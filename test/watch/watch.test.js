@@ -110,6 +110,11 @@ function reset() {
     xf.dispatch('watch:elapsed', 0);
     xf.dispatch('db:workout', {workout});
     settings({autoStart: false, autoPause: true});
+    // Nobody is on the bike yet, and a cold page is told so: a trainer reports
+    // its zero before the rider turns up. Auto start reads that as the rider
+    // being at rest, which is what lets a standing start begin without coasting
+    // first (see 'auto start, after a stop' in watch-timing.test.js).
+    power(0);
     timer.reset();
 }
 
@@ -121,8 +126,6 @@ function settings(sources) {
 
 beforeAll(() => {
     jest.useFakeTimers();
-    // No confirm() in jsdom by default, and stop() asks for one.
-    window.confirm = () => true;
 });
 
 afterAll(() => {
@@ -239,12 +242,26 @@ describe('auto start', () => {
         for(let i = 0; i < 3; i += 1) second(230);
         expect(db.watchStatus).toBe('started');
 
-        // Still pedalling as the rider reaches for stop.
+        // Still pedalling as the rider reaches for stop, and the flywheel keeps
+        // reporting those watts for a good while after. None of them may answer
+        // for the rider and open a second ride on the one they just ended.
         xf.dispatch('ui:watchStop', {confirmed: true});
         expect(db.watchStatus).toBe('stopped');
 
-        second(230);
+        for(let i = 0; i < 10; i += 1) second(230);
         expect(db.watchStatus).toBe('stopped');
+    });
+
+    test('getting back on the pedals after a stop does start a new ride', () => {
+        for(let i = 0; i < 3; i += 1) second(230);
+        xf.dispatch('ui:watchStop', {confirmed: true});
+
+        // The wheel comes to a halt, then they decide to go again.
+        second(0);
+        for(let i = 0; i < 3; i += 1) second(230);
+
+        expect(db.watchStatus).toBe('started');
+        expect(db.workoutStatus).toBe('started');
     });
 });
 
@@ -421,5 +438,57 @@ describe('riding', () => {
         expect(db.elapsed).toBe(2);
         expect(db.stepTime).toBe(118);
         expect(db.lapTime).toBe(118);
+    });
+});
+
+// The stop button ends and saves the ride, so it asks first. It has to ask in
+// the app's own dialog: the browser's blocks the whole page mid-interval and
+// looks nothing like the app.
+describe('stopping asks in the app dialog', () => {
+    afterEach(() => {
+        document.querySelectorAll('.wl-modal-backdrop').forEach((el) => el.remove());
+    });
+
+    function start() {
+        play();
+        second(230);
+    }
+
+    test('an unconfirmed stop opens the modal and leaves the ride running', () => {
+        window.confirm = () => { throw new Error('native confirm() must not be used'); };
+        settings({autoStart: true, autoPause: true});
+        start();
+        expect(db.watchStatus).toBe('started');
+
+        xf.dispatch('ui:watchStop');
+
+        const $modal = document.querySelector('.wl-modal-backdrop .wl-modal');
+        expect($modal).not.toBe(null);
+        expect($modal.querySelector('.wl-modal-head').textContent).toBe('Stop workout');
+        expect(db.watchStatus).toBe('started');
+    });
+
+    test('confirming stops the ride and closes the modal', () => {
+        settings({autoStart: true, autoPause: true});
+        start();
+
+        xf.dispatch('ui:watchStop');
+        document.querySelector('.wl-confirm')
+            .dispatchEvent(new Event('pointerup', {bubbles: true}));
+
+        expect(db.watchStatus).toBe('stopped');
+        expect(document.querySelector('.wl-modal-backdrop')).toBe(null);
+    });
+
+    test('cancelling leaves the ride alone', () => {
+        settings({autoStart: true, autoPause: true});
+        start();
+
+        xf.dispatch('ui:watchStop');
+        document.querySelector('.wl-cancel')
+            .dispatchEvent(new Event('pointerup', {bubbles: true}));
+
+        expect(db.watchStatus).toBe('started');
+        expect(document.querySelector('.wl-modal-backdrop')).toBe(null);
     });
 });

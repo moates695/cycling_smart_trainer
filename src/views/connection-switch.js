@@ -1,5 +1,6 @@
 import { xf, equals, exists, existance, } from '../functions.js';
 import { models } from '../models/models.js';
+import { confirmModal } from './confirm-modal.js';
 
 class ConnectionSwitch extends HTMLElement {
     constructor() {
@@ -14,6 +15,9 @@ class ConnectionSwitch extends HTMLElement {
                 loading: 'loading',
                 indicator: 'connection-switch--indicator',
             },
+            // 'switch' toggles the connection, 'replace' searches for another
+            // device and only swaps it in once one is picked
+            effect: 'switch',
         };
     }
     connectedCallback() {
@@ -22,6 +26,7 @@ class ConnectionSwitch extends HTMLElement {
         this.signal = { signal: self.abortController.signal };
 
         this.for            = this.getAttribute('for');
+        this.effect         = existance(this.getAttribute('effect'), this.getDefaults().effect);
         this.onClass        = existance(this.getAttribute('onClass'), this.getDefaults().class.on);
         this.offClass       = existance(this.getAttribute('offClass'), this.getDefaults().class.off);
         this.loadingClass   = existance(this.getAttribute('loadingClass'), this.getDefaults().class.loading);
@@ -50,7 +55,7 @@ class ConnectionSwitch extends HTMLElement {
         return ;
     }
     onEffect(e) {
-        xf.dispatch(`ui:${this.for}:switch`);
+        xf.dispatch(`ui:${this.for}:${this.effect}`);
     }
     on(e) {
         this.$indicator.classList.remove(this.loadingClass);
@@ -77,7 +82,7 @@ customElements.define('connection-switch', ConnectionSwitch);
 class ProtocolSwitch extends ConnectionSwitch {
     constructor() {
         super();
-        this.confirmMsg = "Proceeding will stop the ANT+ driver! Are you sure?";
+        this.confirmMsg = 'Proceeding will stop the ANT+ driver.';
     }
     getDefaults() {
         return {
@@ -87,15 +92,21 @@ class ProtocolSwitch extends ConnectionSwitch {
                 loading: 'loading',
                 indicator: 'this',
             },
+            effect: 'switch',
         };
     }
     onEffect(e) {
-        console.log(this.status);
+        const self = this;
+        // Switching protocols tears the driver down mid-session, so ask first —
+        // in the app's own dialog, not the browser's.
         if(equals(this.status, 'on') || equals(this.status, 'loading')) {
-            const proceed = confirm(this.confirmMsg);
-            if(proceed) {
-                xf.dispatch(`ui:${this.for}:switch`);
-            }
+            confirmModal({
+                head: 'Switch protocol',
+                body: self.confirmMsg,
+                confirmLabel: 'Switch',
+                confirmClass: 'btn--danger',
+                onConfirm: () => xf.dispatch(`ui:${self.for}:switch`),
+            });
         } else {
             xf.dispatch(`ui:${this.for}:switch`);
         }

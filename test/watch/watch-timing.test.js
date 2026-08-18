@@ -31,6 +31,14 @@ function armed(overrides = {}) {
     return {...timingDefaults(), armed: true, ...overrides};
 }
 
+// The timing state a running ride leaves behind. Pause and stop are both
+// pressed mid-stroke with the pedals still turning, and the 'started' branch
+// clears the rest flag on every sample, so this — not the defaults — is what
+// either of them is actually entered with.
+function running(overrides = {}) {
+    return {...timingDefaults(), coastedSinceRunning: false, ...overrides};
+}
+
 describe('waiting for the pedals after play', () => {
     test('nothing starts while the rider is still still', () => {
         const {state, actions} = ride(Array(5).fill(COASTING), {state: armed()});
@@ -130,6 +138,36 @@ describe('auto start', () => {
     });
 });
 
+describe('auto start, after a stop', () => {
+    const stopped = {status: 'stopped', settings: {autoStart: true}};
+
+    test('the watts spinning down off the press do not start a new ride', () => {
+        // The rider stopped and got off; the flywheel is still turning.
+        const {actions} = ride(Array(AUTO_START_S * 2).fill(RIDING),
+                               {...stopped, state: running()});
+        expect(actions).not.toContain(TimingAction.launch);
+    });
+
+    test('getting going again after a halt does start one', () => {
+        const samples = [COASTING].concat(Array(AUTO_START_S).fill(RIDING));
+        const {actions} = ride(samples, {...stopped, state: running()});
+        expect(actions[actions.length - 1]).toBe(TimingAction.launch);
+    });
+
+    test('a freewheel drifting below the floor counts as the halt', () => {
+        const samples = [DRIFTING].concat(Array(AUTO_START_S).fill(RIDING));
+        const {actions} = ride(samples, {...stopped, state: running()});
+        expect(actions[actions.length - 1]).toBe(TimingAction.launch);
+    });
+
+    test('a standing start is not asked to coast first', () => {
+        // Nothing has run yet, so the rider is already at rest and the defaults
+        // must not make them stop before they can start.
+        const {actions} = ride(Array(AUTO_START_S).fill(RIDING), stopped);
+        expect(actions[actions.length - 1]).toBe(TimingAction.launch);
+    });
+});
+
 describe('auto pause', () => {
     const started = {status: 'started', settings: {autoPause: true}};
 
@@ -217,7 +255,7 @@ describe('auto start, after an auto pause', () => {
 // a stop, getting back on the pedals is how they carry on — the same gesture
 // that starts a ride from a standstill, and the same confirmation.
 describe('auto start, after a pause the rider pressed', () => {
-    const riderPaused = {status: 'paused', settings: {autoStart: true}};
+    const riderPaused = {status: 'paused', settings: {autoStart: true}, state: running()};
 
     test(`coasting, then ${AUTO_START_S}s of pedalling, resumes the ride`, () => {
         const {actions} = ride(
@@ -265,7 +303,7 @@ describe('auto start, after a pause the rider pressed', () => {
     test('having stopped once is remembered across the whole pause', () => {
         // They stopped, sat there a while, then got going.
         let {state} = ride(Array(30).fill(COASTING), riderPaused);
-        expect(state.coastedSincePause).toBe(true);
+        expect(state.coastedSinceRunning).toBe(true);
 
         const {actions} = ride(Array(AUTO_START_S).fill(RIDING), {...riderPaused, state});
         expect(actions[actions.length - 1]).toBe(TimingAction.autoResume);

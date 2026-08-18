@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app import email
 from app.config import Settings, get_settings
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, set_session_cookie
 from app.models import PasswordReset, User, UserSession, new_uuid
 from app.rate_limit import (
     LOGIN_LIMIT,
@@ -56,15 +56,7 @@ def _issue_session(db: Session, response: Response, user: User, request: Request
             user_agent=request.headers.get("user-agent", "")[:500] or None,
         )
     )
-    response.set_cookie(
-        key=settings.session_cookie_name,
-        value=token,
-        max_age=settings.session_ttl_days * 24 * 3600,
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite="lax",
-        path="/",
-    )
+    set_session_cookie(response, token, settings)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=UserOut)

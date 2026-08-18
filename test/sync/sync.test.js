@@ -572,4 +572,45 @@ describe('sync orchestrator', () => {
         expect(sync.user).toBe(undefined);
         expect(sync.state).toBe(SyncState.signedOut);
     });
+
+    // -- staying signed in ------------------------------------------------
+    //
+    // The session cookie is long lived and slides forward on every call, so the
+    // only things that end it are the rider asking and the server saying so. A
+    // launch that cannot reach the backend is neither.
+
+    test('a launch with the backend unreachable keeps the device signed in', async () => {
+        // beforeEach signed in, so this device has an identity to fall back on.
+        server.failNext = null;  // an error with no status: unreachable, not a 401
+        const fresh = Sync();
+
+        const me = await fresh.restore();
+
+        expect(me.id).toBe('user-1');
+        expect(fresh.user.email).toBe('rider@example.com');
+        expect(fresh.state).not.toBe(SyncState.signedOut);
+
+        // ...and it converges once the backend answers again.
+        await fresh.drain();
+        expect(fresh.state).toBe(SyncState.idle);
+    });
+
+    test('a session the server has forgotten does sign the device out', async () => {
+        server.signedIn = false;
+        const fresh = Sync();
+
+        expect(await fresh.restore()).toBe(undefined);
+        expect(fresh.user).toBe(undefined);
+        expect(fresh.state).toBe(SyncState.signedOut);
+    });
+
+    test('an unreachable backend cannot resurrect an account signed out of', async () => {
+        await sync.logout();
+        server.signedIn = true;
+        server.failNext = null;
+        const fresh = Sync();
+
+        expect(await fresh.restore()).toBe(undefined);
+        expect(fresh.state).toBe(SyncState.signedOut);
+    });
 });

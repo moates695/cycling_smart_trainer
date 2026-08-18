@@ -649,9 +649,9 @@ class Activity extends Model {
         return activityList;
     }
     // Derived ride metrics for the Completed list: average power / heart
-    // rate, normalised power, TSS, plus compact power/HR/cadence traces and a
-    // snapshot of the planned intervals for the ride-analysis graph. Returns
-    // {} when nothing was recorded so the summary stays lean.
+    // rate, normalised power, TSS, plus compact power/HR/cadence traces for
+    // the ride-analysis graph. Returns {} when nothing was recorded so the
+    // summary stays lean.
     summarize(db) {
         // rr-interval entries carry only {time}, so keep timestamped samples.
         const records = (db.records ?? []).filter((r) => exists(r.timestamp));
@@ -667,47 +667,72 @@ class Activity extends Model {
         const avgHeartRate = empty(hrSamples) ?
               undefined : Math.round(avg(hrSamples));
 
+        // Riding time each sample sits at. A record is pushed once per second
+        // of *moving* time, but that is not a promise: a pause leaves a real
+        // gap between timestamps, and a backgrounded tab or a phone that went
+        // to sleep drops ticks outright. So the axis is measured from the
+        // timestamps rather than assumed from the sample index. Gaps longer
+        // than SAMPLE_GAP_MAX_S are time the rider wasn't riding — they count
+        // for the one second the sample itself covers, so the trace reads as
+        // moving time, the same clock the ride's duration is on.
+        const SAMPLE_GAP_MAX_S = 3;
+        const times = [];
+        let riding = 0;
+        for(let i = 0; i < records.length; i++) {
+            if(i > 0) {
+                const delta = (records[i].timestamp - records[i - 1].timestamp) / 1000;
+                riding += (delta > 0 && delta <= SAMPLE_GAP_MAX_S) ? delta : 1;
+            }
+            times.push(riding);
+        }
+        // The last sample covers its own second too.
+        const span = riding + 1;
+
         const np = this.normalisedPower(powers);
         const intensity = ftp > 0 ? (np / ftp) : 0;
-        const durationSec = records.length; // 1 record per second
         const tss = ftp > 0 ?
-              Math.round(((durationSec * np * intensity) / (ftp * 3600)) * 100) :
+              Math.round(((span * np * intensity) / (ftp * 3600)) * 100) :
               undefined;
 
-        // ~1 sample per bucket, capped so a stored summary stays small.
-        const resample = (values, n) => {
-            const len = values.length;
-            if(len <= n) return values.map((v) => Math.round(v));
+        // Resample onto an even time grid: bucket i is the average of the
+        // samples that fall in it, and a bucket the recording skipped holds
+        // the last value rather than dropping to zero. Index-bucketing would
+        // stretch whatever was recorded across the full width, which is what
+        // put the traces out of step with the time axis under them.
+        const resampleByTime = (values, n) => {
             const out = [];
+            let j = 0;
+            let last = 0;
             for(let i = 0; i < n; i++) {
-                const start = Math.floor((i * len) / n);
-                const end = Math.max(start + 1, Math.floor(((i + 1) * len) / n));
+                const end = equals(i, n - 1) ? Infinity : ((i + 1) * span) / n;
                 let sum = 0;
-                for(let j = start; j < end; j++) sum += values[j];
-                out.push(Math.round(sum / (end - start)));
+                let count = 0;
+                while(j < times.length && times[j] < end) {
+                    sum += values[j];
+                    count += 1;
+                    j += 1;
+                }
+                if(count > 0) last = sum / count;
+                out.push(Math.round(last));
             }
             return out;
         };
-        const points = 180;
+        // At most one point per second, capped so a stored summary stays small.
+        const points = Math.max(1, Math.min(180, Math.round(span)));
         const trace = {
-            p: resample(powers, points),
-            h: resample(heartRates, points),
-            c: resample(cadences, points),
+            p: resampleByTime(powers, points),
+            h: resampleByTime(heartRates, points),
+            c: resampleByTime(cadences, points),
+            // Riding seconds the trace spans, so the graph can label its time
+            // axis off what was actually recorded.
+            dur: Math.round(span),
         };
 
-        // planned steps as {d: seconds, pct: %FTP} for the dimmed background
-        // bars of the ride analysis.
-        const plan = (db.workout?.intervals ?? []).flatMap((interval) => {
-            return (interval.steps ?? []).map((step) => {
-                const watts = models.ftp.toAbsolute(step.power, ftp) ?? 0;
-                return {
-                    d: step.duration ?? 0,
-                    pct: Math.round((watts / (ftp || 200)) * 100),
-                };
-            });
-        });
-
-        const summary = { avgPower, np, tss, ftp, trace, plan };
+        // No snapshot of the planned workout is kept: the ride can be paused,
+        // rewound, skipped or abandoned, so the plan has no reliable time
+        // alignment with the recording. The analysis graph draws the recorded
+        // power instead.
+        const summary = { avgPower, np, tss, ftp, trace };
         if(exists(avgHeartRate)) summary.avgHeartRate = avgHeartRate;
         return summary;
     }
@@ -981,6 +1006,18 @@ function Session(args = {}) {
         idb.put('session', idb.setId(dbToSession(db), 0));
     }
 
+    // A session is worth restoring only while the ride is still going. One whose
+    // workout ran to the end is over, and bringing it back does not put the
+    // rider back in it: `workoutStatus: 'done'` restores along with everything
+    // else, so the watch picks the session up as a free ride with the interval
+    // clock counting up instead of down, and startWorkout() refuses to open the
+    // workout again while the finished index is still on it. Every reload lands
+    // there until the ride is stopped by hand, which reads as an app that will
+    // not start. Clear it, the same as a session with nothing on the clock.
+    function isFinished(session) {
+        return equals(session?.workoutStatus, 'done');
+    }
+
     async function restore(db) {
         const sessions = await idb.getAll(`${name}`);
         xf.dispatch(`${name}:restore`, sessions);
@@ -989,7 +1026,7 @@ function Session(args = {}) {
         let session = last(sessions);
 
         if(!empty(sessions)) {
-            if(session.elapsed > 0) {
+            if(session.elapsed > 0 && !isFinished(session)) {
                 sessionToDb(db, session);
             } else {
                 idb.clear(`${name}`);

@@ -13,7 +13,8 @@ import { xf, exists, empty, equals, first, last } from '../functions.js';
 import { formatTime } from '../utils.js';
 import { models } from '../models/models.js';
 import { courseToGraph } from './workout-graph.js';
-import { zoneClassByPct, rampGradient, chevronSvg } from './watts.js';
+import { confirmModal } from './confirm-modal.js';
+import { zoneClassByPct, rampGradient, timeTicksHtml, chevronSvg } from './watts.js';
 import {
     flattenSteps, shapeSteps, toSegments, rampPolygon,
 } from '../workouts/profile-shape.js';
@@ -161,10 +162,7 @@ function fullProfileHtml(steps, ftp, totalDuration) {
              </div>`;
     }, '');
 
-    const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => {
-        const mins = Math.round((total * f) / 60);
-        return `<span class="watts-wprof--tick" style="left: ${f * 100}%;">${mins}:00</span>`;
-    }).join('');
+    const ticks = timeTicksHtml(total);
 
     return `
         <div class="watts-wprof">
@@ -179,35 +177,6 @@ function fullProfileHtml(steps, ftp, totalDuration) {
             <div class="watts-wprof--timespacer"></div>
             <div class="watts-wprof--ticks">${ticks}</div>
         </div>`;
-}
-
-// Small confirm dialog shared by the row actions that can't simply be undone.
-// Every caller-supplied string is written with textContent, so a workout name
-// can never inject markup into it.
-function confirmModal({head, body, confirmLabel, confirmClass, onConfirm}) {
-    const backdrop = document.createElement('div');
-    backdrop.className = 'wl-modal-backdrop';
-    backdrop.innerHTML = `
-        <div class="wl-modal" role="dialog" aria-modal="true">
-            <div class="wl-modal-head"></div>
-            <div class="wl-modal-body"></div>
-            <div class="wl-modal-foot">
-                <button class="wl-cancel btn">Cancel</button>
-                <button class="wl-confirm btn ${confirmClass ?? ''}"></button>
-            </div>
-        </div>`;
-    backdrop.querySelector('.wl-modal-head').textContent = head;
-    backdrop.querySelector('.wl-modal-body').textContent = body;
-    backdrop.querySelector('.wl-confirm').textContent = confirmLabel;
-
-    const close = () => backdrop.remove();
-    backdrop.addEventListener('pointerup', (e) => {
-        e.stopPropagation();
-        if(e.target === backdrop || e.target.closest('.wl-cancel')) { close(); return; }
-        if(e.target.closest('.wl-confirm')) { close(); onConfirm(); }
-    });
-    document.body.appendChild(backdrop);
-    return backdrop;
 }
 
 function durationText(workout) {
