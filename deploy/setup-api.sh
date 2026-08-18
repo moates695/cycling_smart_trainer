@@ -1,10 +1,11 @@
 #!/bin/bash
 # One-time setup for the WATTS API on the droplet. Safe to re-run.
 #
-# Run this once before the first deploy-api.sh. It creates the env file, brings
-# up Postgres, and adds the `location ^~ /api/` block to the shared nginx
-# template — validating the rendered config in a throwaway container before it
-# touches the live proxy, exactly as setup-droplet.sh does.
+# Run this once before the first deploy-api.sh. It creates the env file, creates
+# the role and database on the droplet's own Postgres, and adds the
+# `location ^~ /api/` block to the shared nginx template — validating the
+# rendered config in a throwaway container before it touches the live proxy,
+# exactly as setup-droplet.sh does.
 set -euo pipefail
 
 BASE=/root/gym_junkie_server
@@ -64,9 +65,14 @@ ensure_key WATTS_SMTP_PASSWORD ""
 # and all, and a quoted display name would make the From header malformed.
 ensure_key WATTS_SMTP_FROM "WATTS <auth.moates@gmail.com>"
 
-echo "== 2/5 Bring up watts-postgres =="
-# The database password is the one value compose interpolates rather than passes
-# through env_file, so it has to reach compose as a variable. It goes in
+echo "== 2/5 Create the watts role and database on the droplet's Postgres =="
+# The database is the PostgreSQL installed on the droplet, shared with the other
+# apps on the box, not a container of its own. The API still runs in a container
+# and reaches it at host.docker.internal, which the compose file maps to the
+# bridge gateway; pg_hba.conf already admits the docker subnets.
+#
+# The password is the one value compose interpolates rather than passes through
+# env_file, so it has to reach compose as a variable. It goes in
 # $REMOTE_DIR/.env, which compose reads by itself: an `export` here would only
 # last the length of this script, and every later `docker compose -p watts ...`
 # run by hand on the droplet would silently interpolate an empty password.
@@ -78,15 +84,30 @@ echo "== 2/5 Bring up watts-postgres =="
 sed -n 's/^WATTS_DB_PASSWORD=//p' "$ENV_FILE" | (umask 077; sed 's/^/WATTS_DB_PASSWORD=/' > "$REMOTE_DIR/.env")
 grep -q '^WATTS_DB_PASSWORD=.' "$REMOTE_DIR/.env" || { echo "   ERROR: no WATTS_DB_PASSWORD in $ENV_FILE"; exit 1; }
 echo "   wrote $REMOTE_DIR/.env for compose interpolation"
-cd "$REMOTE_DIR"
-docker compose -p watts up -d watts-postgres
-echo "   waiting for health ..."
-for _ in $(seq 1 30); do
-    if [ "$(docker inspect -f '{{.State.Health.Status}}' watts-postgres 2>/dev/null)" = "healthy" ]; then
-        echo "   healthy"; break
-    fi
-    sleep 2
-done
+
+DB_PASSWORD=$(sed -n 's/^WATTS_DB_PASSWORD=//p' "$ENV_FILE")
+# Re-running this resets the role's password to whatever the env file holds,
+# which is what keeps the two in step if the secret is ever rotated by hand.
+# The generated password is base64 with /+= stripped, so it carries no quote to
+# escape here.
+sudo -u postgres psql -v ON_ERROR_STOP=1 -q <<SQL
+do \$\$ begin
+    if not exists (select 1 from pg_roles where rolname = 'watts') then
+        create role watts login;
+    end if;
+end \$\$;
+alter role watts password '$DB_PASSWORD';
+SQL
+if sudo -u postgres psql -tAc "select 1 from pg_database where datname = 'watts'" | grep -q 1; then
+    echo "   database watts already exists"
+else
+    sudo -u postgres createdb -O watts watts
+    echo "   created database watts owned by watts"
+fi
+# Prove the path the container will actually take, password and all, rather than
+# the peer-authenticated one above.
+PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -U watts -d watts -tAc 'select 1' >/dev/null
+echo "   watts can log in over TCP"
 
 echo "== 3/5 Add the /api/ location to the nginx template =="
 if grep -q "watts-api:8010" "$TEMPLATE"; then

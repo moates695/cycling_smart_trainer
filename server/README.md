@@ -32,10 +32,11 @@ uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --port 8010
 ```
 
-There are two environments and no others: this local dev database, and prod on the droplet.
-Locally that is a Postgres installed on the machine rather than a container — on this developer's
-WSL setup, the PostgreSQL 17 on the Windows host. It needs a `watts` role and one database,
-`watts_dev`, owned by it:
+There are two environments and no others: this local dev database, and prod on the droplet. Both
+are a Postgres installed on the machine rather than a container — locally, on this developer's WSL
+setup, the PostgreSQL 17 on the Windows host; in production the PostgreSQL 16 on the droplet, shared
+with the other apps on that box. Local needs a `watts` role and one database, `watts_dev`, owned by
+it:
 
 ```sql
 create role watts login password 'watts' createdb;
@@ -163,6 +164,20 @@ nc -zv smtp.gmail.com 587      # from the droplet
 `deploy-api.sh` runs `alembic upgrade head` before the new code goes live, so the schema is never
 behind the app. That ordering is safe because every migration so far is additive.
 
-The API is never published to the host — nginx reaches it over `backend-prod_api-network`. Its
-Postgres is bound to loopback only, so `pg_dump` from the droplet works but nothing off it can
-connect.
+The API is never published to the host — nginx reaches it over `backend-prod_api-network`.
+
+The production database is the droplet's own PostgreSQL, database `watts` owned by role `watts`,
+not a container: one server for every app on the box, so one backup job and one major-version
+upgrade to keep track of, and it matches how dev runs. The API container reaches it at
+`host.docker.internal`, which the compose file maps to the bridge gateway — `host.docker.internal`
+is not defined on Linux unless `extra_hosts` asks for it, and the name rather than a literal
+`172.18.0.1` because the bridge is renumbered if the network is ever recreated. The droplet's
+`pg_hba.conf` already admits the docker subnets (`172.16.0.0/12`); the server listens on all
+interfaces but that file is what bounds who can actually authenticate.
+
+`psql` and `pg_dump` run straight from the droplet with no container in the way:
+
+```bash
+ssh do 'sudo -u postgres psql watts'
+ssh do 'sudo -u postgres pg_dump watts' > watts-prod.sql
+```

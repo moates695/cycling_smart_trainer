@@ -1,9 +1,16 @@
-# The WATTS API and its database, as a fragment to merge into the backend-prod
-# stack at /root/gym_junkie_server/docker-compose.yml.
+# The WATTS API, as a fragment to merge into the backend-prod stack at
+# /root/gym_junkie_server/docker-compose.yml.
 #
-# Deliberately no `ports:` on watts-api — api-prod already owns host port 8000,
-# and nginx reaches this over the docker network. Postgres is bound to loopback
-# only, so pg_dump from the host works but nothing off the droplet can connect.
+# Deliberately no `ports:` — api-prod already owns host port 8000, and nginx
+# reaches this over the docker network.
+#
+# The database is the PostgreSQL 16 installed on the droplet itself, not a
+# container: one server for every app on the box, one backup and one upgrade to
+# keep track of, and it mirrors local dev, which is the Postgres installed on
+# the developer's machine. The container reaches it at host.docker.internal,
+# mapped to the bridge gateway below — pg_hba.conf already admits the docker
+# subnets (172.16.0.0/12), and the host server is not reachable off the droplet
+# except from the addresses that file names.
 services:
   watts-api:
     build:
@@ -18,37 +25,16 @@ services:
       - /root/gym_junkie_server/app/envs/watts.env
     environment:
       WATTS_ENV: production
-      WATTS_DATABASE_URL: postgresql+psycopg://watts:${WATTS_DB_PASSWORD}@watts-postgres:5432/watts
+      WATTS_DATABASE_URL: postgresql+psycopg://watts:${WATTS_DB_PASSWORD}@host.docker.internal:5432/watts
       # The PWA is same origin behind nginx, so no CORS and no preflight.
       WATTS_CORS_ORIGINS: ""
-    depends_on:
-      watts-postgres:
-        condition: service_healthy
+    # host.docker.internal is not defined on Linux unless it is asked for. The
+    # name rather than 172.18.0.1 because the bridge is renumbered if the
+    # backend-prod network is ever recreated.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - backend-prod_api-network
-
-  watts-postgres:
-    image: postgres:16-alpine
-    container_name: watts-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: watts
-      POSTGRES_PASSWORD: ${WATTS_DB_PASSWORD}
-      POSTGRES_DB: watts
-    volumes:
-      - watts_pgdata:/var/lib/postgresql/data
-    ports:
-      - "127.0.0.1:5435:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U watts -d watts"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    networks:
-      - backend-prod_api-network
-
-volumes:
-  watts_pgdata:
 
 networks:
   backend-prod_api-network:

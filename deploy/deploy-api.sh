@@ -13,16 +13,24 @@ REMOTE=do
 REMOTE_DIR=/root/watts
 
 echo "== 0/4 Preflight =="
-# compose interpolates ${WATTS_DB_PASSWORD} into both the database container and
-# the API's DATABASE_URL, and reads it from $REMOTE_DIR/.env, which setup-api.sh
-# writes. Unset, compose substitutes an empty string with only a warning: the
-# database would come up with a blank password and the API would fail to reach
-# it. Refuse to deploy rather than release that.
+# compose interpolates ${WATTS_DB_PASSWORD} into the API's DATABASE_URL and
+# reads it from $REMOTE_DIR/.env, which setup-api.sh writes. Unset, compose
+# substitutes an empty string with only a warning, and the API would fail to
+# authenticate against the droplet's Postgres. Refuse to deploy rather than
+# release that.
 ssh "$REMOTE" "grep -q '^WATTS_DB_PASSWORD=.' $REMOTE_DIR/.env 2>/dev/null" || {
     echo "ERROR: no WATTS_DB_PASSWORD in $REMOTE:$REMOTE_DIR/.env — run setup-api.sh first."
     exit 1
 }
 echo "   database password present"
+# The database is the droplet's own Postgres, not a container this stack starts,
+# so nothing here would bring it back if it were down — a migration against a
+# dead server is a failed deploy halfway through. Check it first.
+ssh "$REMOTE" "systemctl is-active --quiet postgresql && pg_isready -h 127.0.0.1 -q" || {
+    echo "ERROR: Postgres on $REMOTE is not accepting connections."
+    exit 1
+}
+echo "   host Postgres accepting connections"
 
 echo "== 1/4 Ship the server source =="
 ssh "$REMOTE" "mkdir -p $REMOTE_DIR"
@@ -40,7 +48,6 @@ ssh "$REMOTE" "cd $REMOTE_DIR && docker compose -p watts build watts-api"
 echo "== 3/4 Migrate, then release =="
 # Migrations run before the new code is live, so the schema is never behind the
 # app. Every migration so far is additive, which is what makes that ordering safe.
-ssh "$REMOTE" "cd $REMOTE_DIR && docker compose -p watts up -d watts-postgres"
 ssh "$REMOTE" "cd $REMOTE_DIR && docker compose -p watts run --rm watts-api alembic upgrade head"
 ssh "$REMOTE" "cd $REMOTE_DIR && docker compose -p watts up -d watts-api"
 
